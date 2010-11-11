@@ -1,11 +1,29 @@
 /**
+ * Input base package
+ */
+WebTrek.Client.Input = ( function () {
+
+    var $this = {
+
+        init: function () {
+            return $this;
+        },
+
+        EOF:null
+    };
+
+    return $this.init();
+})();
+
+/**
  * Keyboard input class
  */
-WebTrek_Client_Input_Keyboard = function (options) {
+WebTrek.Client.Input.Keyboard = function (options) {
     return this.__construct(options);
 };
+(function () {
 
-WebTrek_Client_Input_Keyboard.KEYS = {
+WebTrek.Client.Input.Keyboard.KEYS = {
     meta: 18,
     shift: 16,
     ctrl: 17,
@@ -24,79 +42,65 @@ WebTrek_Client_Input_Keyboard.KEYS = {
     space: 32
 };
 
-(function () {
+WebTrek.Client.Input.Keyboard.prototype = {
 
-    WebTrek_Client_Input_Keyboard.prototype = {
+    __construct: function (options) {
 
-        __construct: function (options) {
+        this.options = _.extend({
+            target: null,
+            onkeypress: null,
+            bindings: { }
+        }, options);
 
-            this.options = _.extend({
-                target: null,
-                onkeypress: null,
-                bindings: { }
-            }, options);
+        var $this = this,
+            target = $this.options.target,
+            states = $this.states = {},
+            onkeypress = $this.options.onkeypress;
 
-            var $this = this,
-                target = $this.options.target,
-                states = $this.states = {};
+        for (var i=0; i < 255; i++) {
+            $this.states[i] = 0;
+        }
 
-            for (var i=0; i < 255; i++) {
-                $this.states[i] = 0;
+        target.onkeypress = function(e) {
+            if (onkeypress) {
+                onkeypress(e.keyCode || e.which, e);
+                e.preventDefault();
             }
+        };
 
-            $this.states['shift'] = 0;
-            $this.states['ctrl'] = 0;
-            $this.states['alt'] = 0;
-            $this.states['meta'] = 0;
+        target.onkeydown = function(e) {
+            if(states[e.keyCode] == 0) { states[e.keyCode] = 1; }
+            if (!onkeypress) { e.preventDefault(); }
+        };
 
-            target.onkeypress = function(e) {
-                if ($this.options.onkeypress) {
-                    $this.options.onkeypress(e.keyCode || e.which, e);
-                    e.preventDefault();
-                }
-            };
+        target.onkeyup = function(e) {
+            if(states[e.keyCode] > 0) { states[e.keyCode] = 0; }
+            if (!onkeypress) { e.preventDefault(); }
+        };
 
-            target.onkeydown = function(e) {
-                if($this.states[e.keyCode] == 0) {
-                    $this.states[e.keyCode] = 1;
-                }
-                if (!$this.options.onkeypress) {
-                    e.preventDefault();
-                }
-            };
+    },
 
-            target.onkeyup = function(e) {
-                if($this.states[e.keyCode] > 0) {
-                    $this.states[e.keyCode] = 0;
-                }
-                if (!$this.options.onkeypress) {
-                    e.preventDefault();
-                }
-            };
+    destroy: function () {
+        this.target.onkeypress = null;
+        this.target.onkeydown = null;
+        this.target.onkeyup = null;
+    },
 
-        },
+    on: function (name) {
+        var key = this.options.bindings[name];
+        return this.states[key];
+    },
 
-        destroy: function () {
-            this.target.onkeypress = null;
-            this.target.onkeydown = null;
-            this.target.onkeyup = null;
-        },
+    toggle: function (name) {
+        var key = this.options.bindings[name];
+        if (this.states[key] == 1) {
+            this.states[key] = 2;
+            return 1;
+        }
+        return 0;
+    },
 
-        on: function (name) {
-            var key = this.options.bindings[name];
-            return this.states[key];
-        },
-
-        toggle: function (name) {
-            var key = this.options.bindings[name];
-            if (this.states[key] == 1) {
-                this.states[key] = 2;
-                return 1;
-            }
-            return 0;
-        },
-
-        EOF:null
-    };
+    EOF:null
+};
 
 })();

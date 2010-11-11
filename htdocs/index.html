@@ -19,16 +19,19 @@
         <script type="text/javascript" src="js/jquery-1.4.3.js"></script>
         <script type="text/javascript" src="js/underscore.js"></script>
 
+        <script type="text/javascript" src="js/webtrek.js"></script>
+
+        <script type="text/javascript" src="js/webtrek/game.js"></script>
+        <script type="text/javascript" src="js/webtrek/game/world.js"></script>
         <script type="text/javascript" src="js/webtrek/game/loop.js"></script>
 
-        <script type="text/javascript" src="js/webtrek/client/gamecanvas.js"></script>
+        <script type="text/javascript" src="js/webtrek/client.js"></script>
+        <script type="text/javascript" src="js/webtrek/client/viewport.js"></script>
         <script type="text/javascript" src="js/webtrek/client/input.js"></script>
-        <script type="text/javascript" src="js/webtrek/client/client.js"></script>
 
         <script type="text/javascript">
             $(document).ready(function () {
-                var client = new WebTrek_Client({
-                });
+                var client = new WebTrek.Client({ });
                 client.init();
             });
         </script>

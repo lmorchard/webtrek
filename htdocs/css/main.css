@@ -4,6 +4,7 @@ html {
 body { 
     margin: 0; padding: 0; 
     font-family: arial; 
+    background: #000;
 }
 #display { 
     position: absolute; 
@@ -20,6 +21,6 @@ body {
     font-size: 11px;
     position: absolute;
     bottom: 15px; right: 15px;
-    width: 500px; height: 100px;
+    width: 350px; height: 70px;
     z-index: 9999;
 }

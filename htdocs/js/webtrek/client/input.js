@@ -52,9 +52,12 @@ WebTrek.Client.Input.Keyboard.prototype = {
             bindings: { }
         }, options);
 
-        var $this = this,
-            target = $this.options.target,
-            states = $this.states = {},
+        var $this = this;
+
+        $this.states = {};
+
+        var target = $this.options.target,
+            states = $this.states,
             onkeypress = $this.options.onkeypress;
 
         for (var i=0; i < 255; i++) {
@@ -69,7 +72,7 @@ WebTrek.Client.Input.Keyboard.prototype = {
         };
 
         target.onkeydown = function(e) {
-            if(states[e.keyCode] == 0) { states[e.keyCode] = 1; }
+            if(states[e.keyCode] === 0) { states[e.keyCode] = 1; }
             if (!onkeypress) { e.preventDefault(); }
         };
 

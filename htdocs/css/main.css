@@ -1,0 +1,25 @@
+html {
+    height: 100%;
+}
+body { 
+    margin: 0; padding: 0; 
+    font-family: arial; 
+}
+#display { 
+    position: absolute; 
+    top: 0; left: 0; 
+    background: #000; 
+}
+#fps {
+    position: absolute;
+    top: 10px; left: 10px;
+    color: #ff0;
+}
+#console {
+    font-family: monospace;
+    font-size: 11px;
+    position: absolute;
+    bottom: 15px; right: 15px;
+    width: 500px; height: 100px;
+    z-index: 9999;
+}

@@ -17,8 +17,6 @@ WebTrek.Client.prototype = {
     init: function () {
         var $this = this;
 
-        alert("CLIENT INIT");
-
         $this.viewport = new WebTrek.Client.Viewport({
             canvas: this.options.document.getElementById("display"),
             fullscreen: true

@@ -18,16 +18,8 @@ WebTrek.Client.prototype = {
         var $this = this;
 
         $this.world = new WebTrek.Game.World({
-            width: 800,
-            height: 800
-        });
-
-        $this.viewport = new WebTrek.Client.Viewport({
-            world: $this.world,
-            canvas: this.options.document.getElementById("display"),
-            camera_center: [ 300, 300 ],  
-            // [ $this.world.options.width / 2, $this.world.options.height / 2], 
-            fullscreen: true
+            width: 1500,
+            height: 1500
         });
 
         var KEYS = WebTrek.Client.Input.Keyboard.KEYS;
@@ -42,6 +34,31 @@ WebTrek.Client.prototype = {
             }
         });
 
+        $this.viewport = new WebTrek.Client.Viewport({
+            world: $this.world,
+            canvas: this.options.document.getElementById("display"),
+            camera_center: [ 
+                $this.world.options.width / 2, 
+                $this.world.options.height / 2
+            ], 
+            hud_elements: {
+                fps: new WebTrek.Client.Hud.FPS({ }),
+                input_state: new WebTrek.Client.Hud.InputState({ 
+                    keyboard: $this.keyboard
+                }),
+                reticule: new WebTrek.Client.Hud.Reticule({ })
+            },
+            fullscreen: true
+        });
+
+        var avatar = new WebTrek.Game.Entity.Avatar({
+        //var avatar = new WebTrek.Game.Entity.Bouncer({
+            position: [ 400, 400 ]
+        });
+
+        $this.world.addEntity(avatar);
+        $this.viewport.startTracking(avatar);
+
         $this.loop = new WebTrek.Game.Loop({
             ontick: function (time, delta) {
                 $this.processInput(time, delta);
@@ -52,19 +69,16 @@ WebTrek.Client.prototype = {
             }
         });
 
-        var avatar = new WebTrek.Game.Entity.Avatar({
-            position: [ 40, 100 ]
-        });
-        $this.world.addEntity(avatar);
-        $this.viewport.startTracking(avatar);
-
-        $this.world.addEntity(new WebTrek.Game.Entity.Avatar({
-            position: [ 100, 30 ]
-        }));
-
-        $this.world.addEntity(new WebTrek.Game.Entity.Avatar({
-            position: [ 100, 100 ]
-        }));
+        for (var i=0; i<15; i++) {
+            $this.world.addEntity(new WebTrek.Game.Entity.Bouncer({
+                position: [ 
+                    $this.world.options.width * Math.random(), 
+                    $this.world.options.height * Math.random() 
+                ]
+            }));
+        }
+        /*
+        */
 
         $this.loop.start();
 

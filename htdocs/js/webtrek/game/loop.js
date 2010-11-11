@@ -14,7 +14,7 @@ WebTrek.Game.Loop.prototype = {
             ondone: null,
             tick: 0,
             interval_delay: 10,
-            tick_duration: 18,
+            tick_duration: 17,
             max_delta: 250
         }, options);
 

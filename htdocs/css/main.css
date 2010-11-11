@@ -17,6 +17,7 @@ body {
     color: #ff0;
 }
 #console {
+    display: none;
     font-family: monospace;
     font-size: 11px;
     position: absolute;

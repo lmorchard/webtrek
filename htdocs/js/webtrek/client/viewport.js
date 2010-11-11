@@ -21,10 +21,14 @@ WebTrek.Client.Viewport.prototype = {
             height: 480,
 
             camera_center: [ 1000, 1000 ],
+            hud_elements: {},
 
-            grid_cell_size: 200,
+            grid_cell_size: 100,
             grid_line_width: 0.5,
             grid_cell_color: 'rgba(255,255,255,0.3)',
+            background_wipe: "rgba(0, 0, 0, 1.0)",
+            // To see trails:
+            // background_wipe: "rgba(0, 0, 0, 0.3)",
 
             canvas: null,
             fullscreen: true,
@@ -32,6 +36,12 @@ WebTrek.Client.Viewport.prototype = {
             fullscreen_cb: null
         
         }, options);
+
+        this.stats = {
+            fps: 0,
+            avg_fps: 0,
+            frame_count: 0
+        };
 
         this.world = this.options.world;
 
@@ -51,6 +61,17 @@ WebTrek.Client.Viewport.prototype = {
             this.initFullscreen(this.options.fullscreen_cb);
         }
 
+        this.hud_elements = {};
+        for (var id in this.options.hud_elements) {
+            this.addHudElement(id, this.options.hud_elements[id]);
+        }
+
+    },
+
+    addHudElement: function (id, element) {
+        element.viewport = this;
+        this.hud_elements[id] = element;
+        element.onAdd(this, this.canvas.width, this.canvas.height);
     },
 
     setCameraCenter: function (pos) {
@@ -89,6 +110,13 @@ WebTrek.Client.Viewport.prototype = {
             $this.canvas.height = document.documentElement.clientHeight;
 
             $this.setCameraCenter($this.camera.center);
+
+            var hud_elements = $this.hud_elements;
+            for (var id in hud_elements) {
+                hud_elements[id].onResize(
+                    $this.canvas.width, $this.canvas.height
+                );
+            }
             
             if (fs_callback) { 
                 fs_callback($this.canvas.width, $this.canvas.height);
@@ -99,10 +127,14 @@ WebTrek.Client.Viewport.prototype = {
     },
 
     update: function (tick, delta, remainder) {
+        this.stats.frame_count++;
+
         this.wipe(tick, delta, remainder);
+        
         if (this.tracking) {
             this.setCameraCenter(this.tracking.position);
         }
+
         this.draw_backdrop(tick, delta, remainder);
         this.draw_entities(tick, delta, remainder);
         this.draw_hud(tick, delta, remainder);
@@ -110,11 +142,44 @@ WebTrek.Client.Viewport.prototype = {
 
     wipe: function (tick, delta, remainder) {
         this.ctx.save();
-        this.ctx.fillStyle = "rgba(0, 0, 0, 1)";
+        this.ctx.fillStyle = this.options.background_wipe;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.restore();      
     },
 
+    draw_entities: function (tick, delta, remainder) {
+        var entities = this.world.entities;
+        var ctx = this.ctx;
+        for (var id in entities) { if (entities.hasOwnProperty(id)) {
+            var entity = this.world.entities[id],
+                view = entity.getView();
+            if (view) { 
+                var point = vmath.vector_sub(entity.position, this.camera.lt);
+                ctx.save();
+                ctx.translate(point[0], point[1]);
+                view.draw(ctx, tick, delta, remainder); 
+                ctx.restore();
+            }
+        }}
+    },
+
+    draw_hud: function (tick, delta, remainder) {
+        var hud_elements = this.hud_elements;
+        var ctx = this.ctx;
+        for (var id in hud_elements) {
+            var element = hud_elements[id];
+            if (element.visible) {
+                ctx.save();
+                element.draw(ctx, tick, delta, remainder);
+                ctx.restore();
+            }
+        }
+    },
+
+    /**
+     * Draw a grid, relative to the camera.
+     * TODO: Optimize this, since it gets run on every frame, ugh.
+     */
     draw_backdrop: function (tick, delta, remainder) {
 
         var ctx  = this.ctx,
@@ -185,43 +250,6 @@ WebTrek.Client.Viewport.prototype = {
 
         ctx.restore();
 
-    },
-
-    draw_entities: function (tick, delta, remainder) {
-        var entities = this.world.entities;
-        var ctx = this.ctx;
-        for (var id in entities) { if (entities.hasOwnProperty(id)) {
-            var entity = this.world.entities[id],
-                view = entity.getView();
-            if (view) { 
-                var point = vmath.vector_sub(entity.position, this.camera.lt);
-
-                /*
-                $('#console').val(
-                    "HONK: " + [
-                        this.camera.lt, entity.position, point
-                    ].map(function (a) { return a.join(", "); }).join("\n")
-                );
-                */
-
-                ctx.save();
-                ctx.translate(point[0], point[1]);
-                view.draw(this, tick, delta, remainder); 
-                ctx.restore();
-            }
-        }}
-    },
-
-    draw_hud: function (tick, delta, remainder) {
-        var ctx = this.ctx;
-        ctx.save();
-        ctx.strokeStyle = 'rgba(0,255,0,0.1)';
-        ctx.lineWidth = 4;
-        this.circle(this.canvas.width / 2, this.canvas.height / 2, 75);
-        ctx.stroke();
-        this.circle(this.canvas.width / 2, this.canvas.height / 2, 2);
-        ctx.stroke();
-        ctx.restore();
     },
 
     circle: function(x, y, r) {

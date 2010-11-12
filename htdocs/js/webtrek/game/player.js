@@ -29,9 +29,9 @@ WebTrek.Game.Player = Class.extend({
 
             if (k.on('thrust')) { action.thrust = 1; }
             if (k.on('reverse')) { action.thrust = -1; }
-            if (k.on('fire')) { action.fire = true; }
             if (k.on('rotate_left')) { action.rotate = -1; }
             if (k.on('rotate_right')) { action.rotate = 1; }
+            if (k.on('fire')) { action.fire = true; }
 
             this.avatar.setAction(action);
         }

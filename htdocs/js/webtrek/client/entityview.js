@@ -50,3 +50,35 @@ WebTrek.Client.EntityView.AvatarView = WebTrek.Client.EntityView.EntityViewBase.
     EOF:null
 
 });
+
+/**
+ * Bullet view class
+ */
+WebTrek.Client.EntityView.BulletView = WebTrek.Client.EntityView.EntityViewBase.extend(
+    (function () {
+        var full_circle = Math.PI * 2;
+        
+        return {
+
+            draw: function (ctx, time, delta, remainder) {
+
+                ctx.save();
+
+                ctx.rotate(this.entity.angle);
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(0, 0, 2, 0, full_circle, true);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.fill();
+
+                ctx.restore();
+
+            },
+
+            EOF:null
+        };
+    })()
+);

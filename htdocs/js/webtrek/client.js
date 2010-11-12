@@ -18,8 +18,8 @@ WebTrek.Client.prototype = {
         var $this = this;
 
         $this.world = new WebTrek.Game.World({
-            width:  1500,
-            height: 1500
+            width:  500,
+            height: 500
         });
 
         $this.viewport = new WebTrek.Client.Viewport({

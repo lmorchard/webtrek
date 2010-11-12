@@ -17,7 +17,7 @@ WebTrek.Game.Player = Class.extend({
         this.keyboard = this.options.keyboard;
     },
 
-    update: function (world, tick, delta) {
+    update: function (tick, delta) {
         
         if (this.keyboard) {
             var k = this.keyboard;

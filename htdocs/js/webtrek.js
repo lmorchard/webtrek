@@ -4,6 +4,7 @@
 WebTrek = ( function () {
 
     var $this = {
+        hello: 'world',
 
         init: function () {
             return $this;
@@ -14,3 +15,8 @@ WebTrek = ( function () {
 
     return $this.init();
 })();
+
+// Export for CommonJS / node.js
+try {
+    globals.WebTrek = WebTrek;
+} catch(e) { }

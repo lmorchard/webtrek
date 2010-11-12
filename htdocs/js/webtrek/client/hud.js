@@ -15,16 +15,19 @@ WebTrek.Client.Hud.ElementBase = Class.extend({
         this.options = _.extend({
             position: [0, 0]
         }, options);
+
         this.position = this.options.position;
     },
 
     hide: function () { this.visible = false; },
     show: function () { this.visible = true; },
     draw: function (ctx, tick, delta, remainder) { },
-    onAdd: function (viewport, width, height) { },
-    onResize: function (width, height) { },
+    onAdd: function (viewport, width, height) {
+        this.viewport = viewport;
+        this.onResize(width, height);
+    },
+    onResize: function (width, height) { }
 
-    EOF:null
 });
 
 /**
@@ -57,7 +60,11 @@ WebTrek.Client.Hud.Reticule = WebTrek.Client.Hud.ElementBase.extend({
 
 });
 
+/**
+ * Basic line-of-text HUD element
+ */
 WebTrek.Client.Hud.TextBase = WebTrek.Client.Hud.ElementBase.extend({
+
     init: function (options) {
         this._super(_.extend({
             font: '13px Arial',
@@ -65,6 +72,7 @@ WebTrek.Client.Hud.TextBase = WebTrek.Client.Hud.ElementBase.extend({
             position: [ 20, 20 ]
         }, options));
     },
+    
     draw: function (ctx, tick, delta, remainder) {
         var text = this.updateText(tick, delta, remainder);
         
@@ -76,36 +84,61 @@ WebTrek.Client.Hud.TextBase = WebTrek.Client.Hud.ElementBase.extend({
         ctx.fillText(text, 0, 0, 0);
         ctx.restore();
     }
+
 });
 
 /**
  * FPS meter
  */
 WebTrek.Client.Hud.FPS = WebTrek.Client.Hud.TextBase.extend({
+
+    update_period: 250,
+
+    init: function (options) {
+        this._super(options);
+        this.last_tick = 0;
+        this.last_count = 0;
+        this.fps = 0;
+        this.avg_fps = 0;
+    },
+
     updateText: function (tick, delta, remainder) {
-        var fps = this.viewport.stats.frame_count / ( tick / 1000 );
-        var text = 'FPS: ' + parseInt(fps, 10);
+        var fps = 0;
+        if ((tick-this.last_tick) > this.update_period) {
+            this.fps = parseInt(
+                ( this.viewport.stats.frame_count - this.last_count ) /
+                ( ( tick - this.last_tick ) / 1000 ) , 10);
+            this.avg_fps = 
+                parseInt(this.viewport.stats.frame_count / ( tick / 1000 ))
+            this.last_tick = tick;
+            this.last_count = this.viewport.stats.frame_count;
+        }
+        var text = _.template(
+            'FPS: <%=avg_fps%> avg / <%=fps%> curr', this
+        );
         return text;
     }
+
 });
 
 /**
  * Input states
  */
 WebTrek.Client.Hud.InputState = WebTrek.Client.Hud.TextBase.extend({
+    
     init: function (options) {
         this._super(_.extend({
             color: 'rgb(255,0,0)',
             keyboard: null
         }, options));
+        
         this.keyboard = this.options.keyboard;
     },
-    onAdd: function (viewport, width, height) {
-        this.position = [ 10, height-20 ];
-    },
+
     onResize: function (width, height) {
         this.position = [ 10, height-20 ];
     },
+    
     updateText: function () {
         var out = [],
             bs = this.keyboard.options.bindings;
@@ -114,21 +147,25 @@ WebTrek.Client.Hud.InputState = WebTrek.Client.Hud.TextBase.extend({
         }
         return 'KEYS: ' + out.join('; ');
     }
+
 });
 
+/**
+ * Avatar state tracking
+ */
 WebTrek.Client.Hud.AvatarState = WebTrek.Client.Hud.InputState.extend({
+    
     init: function (options) {
         this._super(_.extend({
             color: 'rgb(255,0,0)',
             avatar: null
         }, options));
     },
-    onAdd: function (viewport, width, height) {
-        this.position = [ 10, height-40 ];
-    },
+
     onResize: function (width, height) {
         this.position = [ 10, height-40 ];
     },
+    
     updateText: function () {
         return _.template(
             'SHIP: '+
@@ -139,4 +176,5 @@ WebTrek.Client.Hud.AvatarState = WebTrek.Client.Hud.InputState.extend({
             this.options.avatar
         );
     }
+
 });

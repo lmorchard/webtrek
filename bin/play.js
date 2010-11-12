@@ -4,20 +4,25 @@
  */
 require.paths.unshift(__dirname + '/../deps')
 require.paths.unshift(__dirname + '/../htdocs/js')
+require.paths.unshift(__dirname + '/../lib')
 
 var sys       = require('sys'),
     path      = require('path'),
     fs        = require('fs'),
     util      = require('util'),
     http      = require('http'),
-
     socket_io = require('socket.io'),
     connect   = require('connect'),
-    express   = require('express');
+    express   = require('express'),
+    webtrek   = require('webtrek/server');
 
 function main() {
 
-    app = express.createServer(
+    var game_server = new webtrek.Server({ 
+    });
+    game_server.start();
+
+    var app = express.createServer(
         express.logger(),
         express.bodyDecoder(),
         express.methodOverride(),
@@ -69,5 +74,6 @@ function main() {
 
     });
 }
+
 
 main();

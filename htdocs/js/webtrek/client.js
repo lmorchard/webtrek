@@ -1,25 +1,22 @@
 /**
  * Main driver for webtrek
  */
-WebTrek.Client = function (options) {
-    return this.__construct(options); 
-};
-(function () {
+WebTrek.Client = Class.extend({
 
-WebTrek.Client.prototype = {
-
-    __construct: function (options) {
+    init: function (options) {
         this.options = _.extend({
-            document: document
+            document: document,
+            debug: true,
+            world_size: [ 1500, 1500 ]
         }, options);
     },
 
-    init: function () {
+    start: function () {
         var $this = this;
 
         $this.world = new WebTrek.Game.World({
-            width:  500,
-            height: 500
+            width:  this.options.world_size[0],
+            height: this.options.world_size[1]
         });
 
         $this.viewport = new WebTrek.Client.Viewport({
@@ -31,7 +28,6 @@ WebTrek.Client.prototype = {
                 $this.world.options.height / 2
             ], 
             hud_elements: {
-                fps: new WebTrek.Client.Hud.FPS({ }),
                 reticule: new WebTrek.Client.Hud.Reticule({ })
             }
         });
@@ -53,21 +49,27 @@ WebTrek.Client.prototype = {
             })
         });
 
-        /*
-        $this.viewport.addHudElement(
-            'input_state', 
-            new WebTrek.Client.Hud.InputState({ 
-                keyboard: $this.player.keyboard
-            })
-        );
+        if (this.options.debug) {
+            $this.viewport.addHudElement(
+                'fps', new WebTrek.Client.Hud.FPS({ })
+            );
 
-        $this.viewport.addHudElement(
-            'avatar_state', 
-            new WebTrek.Client.Hud.AvatarState({ 
-                avatar: $this.player.avatar
-            })
-        );
-        */
+            $this.viewport.addHudElement(
+                'input_state', 
+                new WebTrek.Client.Hud.InputState({ 
+                    keyboard: $this.player.keyboard
+                })
+            );
+
+            /*
+            $this.viewport.addHudElement(
+                'avatar_state', 
+                new WebTrek.Client.Hud.AvatarState({ 
+                    avatar: $this.player.avatar
+                })
+            );
+            */
+        }
 
         $this.world.addPlayer($this.player);
         $this.world.addEntity($this.player.avatar);
@@ -75,7 +77,6 @@ WebTrek.Client.prototype = {
 
         $this.loop = new WebTrek.Game.Loop({
             ontick: function (time, delta) {
-                $this.processInput(time, delta);
                 $this.world.update(time, delta);
             },
             ondone: function (time, delta, remainder) {
@@ -83,25 +84,10 @@ WebTrek.Client.prototype = {
             }
         });
 
-        /*
-        for (var i=0; i<5; i++) {
-            $this.world.addEntity(new WebTrek.Game.Entity.Bouncer({
-                position: [ 
-                    $this.world.options.width * Math.random(), 
-                    $this.world.options.height * Math.random() 
-                ]
-            }));
-        }
-        */
-
         $this.loop.start();
 
-        //$this.doSocketFun();
-    },
-
-    processInput: function (time, delta) {
-        var $this = this;
-
+        $this.doSocketFun();
+        return this;
     },
 
     doSocketFun: function () {
@@ -112,7 +98,7 @@ WebTrek.Client.prototype = {
         });
 
         socket.on('connect', function () {
-            $this.log('connected');
+            console.log('connected');
             socket.send("HELLO THERE");
 
             (function () {
@@ -128,16 +114,15 @@ WebTrek.Client.prototype = {
 
         });
         socket.on('disconnect', function () {
-            $this.log('disconnected');
+            console.log('disconnected');
         });
         socket.on('message', function (data) {
-            $this.log("MSG: " + data);
+            console.log("MSG: " + data);
         });
         socket.connect();
         
     },
 
     EOF:null
-};
 
-})();
+});

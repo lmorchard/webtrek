@@ -38,12 +38,17 @@ WebTrek.Game.World = Class.extend({
 
     update: function (tick, delta) {
         for (var id in this.players) {
-            this.players[id].update(this, tick, delta);
+            this.players[id].update(tick, delta);
         }
         for (var id in this.entities) {
-            this.entities[id].update(this, tick, delta);
+            this.entities[id].update(tick, delta);
         }
     },
 
     EOF:null
 });
+
+// Export for CommonJS / node.js
+try {
+    globals.WebTrek.Game.World = WebTrek.Game.World;
+} catch(e) { }

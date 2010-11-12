@@ -8,22 +8,22 @@ WebTrek.Game.Entity = {};
  */
 WebTrek.Game.Entity.EntityBase = Class.extend({
 
-    position: [ 0, 0 ],
-    position_sv: [ 0, 0 ],
-    angle: 0,
-    view: null,
     view_class: null,
-    created: null,
 
     init: function (options) {
         this.options = _.extend({
+            owner: null,
             position: [ 0, 0 ],
+            size: [ 10, 10 ],
             angle: 0,
             time_to_live: false
         }, options);
 
+        this.created = null;
+        this.owner = this.options.owner;
         this.position = this.options.position;
-        this.position_sv = this.options.position;
+        this.position_sv = [ this.position[0], this.position[1] ];
+        this.size = _.clone(this.options.size);
         this.angle = this.options.angle;
     },
 
@@ -34,7 +34,7 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
         return this.view;
     },
     
-    update: function (world, time, delta) {
+    update: function (time, delta) {
         if (!this.created) { this.created = time; }
         var age = (time - this.created);
         if (this.options.time_to_live && age > this.options.time_to_live) {
@@ -44,10 +44,15 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
 
     destroy: function () {
         this.world.removeEntity(this.id);
-    },
+    }
 
-    EOF:null
 });
+
+// Export for CommonJS / node.js
+try { 
+    global.WebTrek.Game.Entity.EntityBase = 
+        WebTrek.Game.Entity.EntityBase; 
+} catch(e) { }
 
 /**
  * Basic moving entity.
@@ -75,7 +80,7 @@ WebTrek.Game.Entity.MotionBase = WebTrek.Game.Entity.EntityBase.extend({
     onBounce: function (time, delta) {
     },
 
-    update: function (world, time, delta) {
+    update: function (time, delta) {
         var accel     = this.acceleration,
             angle     = this.angle,
             max_speed = this.options.max_speed,
@@ -88,13 +93,13 @@ WebTrek.Game.Entity.MotionBase = WebTrek.Game.Entity.EntityBase.extend({
             speed_y = speed_y / speed * max_speed;
         }
 
-        var move_x = speed_x * delta,
-            move_y = speed_y * delta,
+        var move_x = ( speed_x / 1000 ) * delta,
+            move_y = ( speed_y / 1000 ) * delta,
             new_x  = this.position[0] + move_x,
             new_y  = this.position[1] + move_y,
             bounce = this.options.bounce;
         
-        if (new_x < 0 || new_x > world.options.width) {
+        if (new_x < 0 || new_x > this.world.options.width) {
             this.onBounce(time, delta);
             if (!bounce) {
                 return this.destroy();
@@ -103,7 +108,7 @@ WebTrek.Game.Entity.MotionBase = WebTrek.Game.Entity.EntityBase.extend({
                 speed_x = 0 - ( speed_x * this.options.bounce );
             }
         }
-        if (new_y < 0 || new_y > world.options.height) {
+        if (new_y < 0 || new_y > this.world.options.height) {
             this.onBounce(time, delta);
             if (!bounce) {
                 return this.destroy();
@@ -122,10 +127,16 @@ WebTrek.Game.Entity.MotionBase = WebTrek.Game.Entity.EntityBase.extend({
         this.position = [ new_x, new_y ];
         this.velocity = [ speed_x, speed_y ];
 
-        this._super(world, time,delta);
+        this._super(time, delta);
     }
 
 });
+
+// Export for CommonJS / node.js
+try { 
+    global.WebTrek.Game.Entity.MotionBase = 
+        WebTrek.Game.Entity.MotionBase; 
+} catch(e) { }
 
 /**
  * Player-controlled avatar entity.
@@ -145,12 +156,13 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
 
     init: function (options) {
         this._super(_.extend({
+            size: [ 20, 30 ],
             rotation_per_delta: 0.005,
-            thrust_accel: 0.0005,
-            reverse_accel: 0.0005,
-            max_speed: 0.4,
+            thrust_accel:  700,
+            reverse_accel: 700,
+            max_speed: 500,
             bounce: 0.8,
-            fire_delay: 300
+            reload_delay: 250
         },options));
     },
 
@@ -158,101 +170,99 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
         this.action = action;
     },
 
-    update: function (world, time, delta) {
+    update: function (time, delta) {
         var a = this.action;
 
         this.rotation = a.rotate * this.options.rotation_per_delta;
 
         var accel;
         if (a.thrust > 0) { 
-            accel = delta * this.options.thrust_accel; 
+            accel = delta * ( this.options.thrust_accel / 1000 ); 
         } else if (a.thrust < 0) { 
-            accel = 0 - (delta * this.options.reverse_accel); 
+            accel = 0 - (delta * ( this.options.reverse_accel / 1000 )); 
         } else {
             accel = 0;
         }
         this.acceleration = accel;
 
-        if (a.fire) {
-            var fire_since = time - this.last_fired;
-            if (fire_since >= this.options.fire_delay) {
-                this.last_fired = time;
+        this._super(time, delta);
 
-                var new_bullet = new WebTrek.Game.Entity.Bullet({
-                    position: this.position,
-                    velocity: this.velocity,
-                    angle:    this.angle,
-                });
-                this.world.addEntity(new_bullet);
-            }
+        if (a.fire && ((time-this.last_fired) >= this.options.reload_delay)) {
+            this.last_fired = time;
+            this.fireBullet(time, delta);
         }
 
-        return this._super(world, time, delta);
     },
 
-    EOF:null
+    fireBullet: function (time, delta) {
+        this.world.addEntity(
+            new WebTrek.Game.Entity.Bullet({ 
+                owner: this 
+            })
+        );
+    }
 
 });
+
+// Export for CommonJS / node.js
+try { 
+    global.WebTrek.Game.Entity.Avatar = 
+        WebTrek.Game.Entity.Avatar; 
+} catch(e) { }
 
 /**
  * Bullet entity
  */
 WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
 
-    bounce_count: 0,
-
     view_class: (!WebTrek.Client) ? null : 
         WebTrek.Client.EntityView.BulletView,
 
     init: function (options) {
         this._super(_.extend({
-            max_speed: 0.4125,
-            acceleration: 0.5,
+            owner: null,
+            size: [ 2, 2 ],
+            max_speed: 700,
+            acceleration: 0,
+            time_to_live: 5000,
             bounce: 1,
             max_bounces: 2
         },options));
+
+        var owner = this.options.owner;
+        var angle = owner.angle;
+        var max_speed = this.options.max_speed;
+
+        // Adopt owner's angle
+        this.angle = angle;
+
+        // Spawn forward of the owner
+        this.position = [ 
+            owner.position[0] + 
+                Math.cos(angle - Math.PI / 2) * owner.size[0] * 1,
+            owner.position[1] + 
+                Math.sin(angle - Math.PI / 2) * owner.size[0] * 1
+        ];
+
+        // Adopt the owner's velocity plus bullet's own speed along angle
+        this.velocity = [
+            Math.cos(angle - Math.PI / 2) * (max_speed) + owner.velocity[0],
+            Math.sin(angle - Math.PI / 2) * (max_speed) + owner.velocity[1]
+        ];
+
+        this.bounces_count = 0;
     },
 
     onBounce: function (time, delta) {
         if (this.bounce_count++ > this.options.max_bounces) {
             this.destroy();
         }
-    },
+    }
 
-    update: function (world, time, delta) {
-
-        var accel     = this.acceleration,
-            angle     = this.angle,
-            max_speed = this.options.max_speed,
-            speed_x   = this.velocity[0],
-            speed_y   = this.velocity[1],
-            speed     = Math.sqrt(Math.pow(speed_x,2) + Math.pow(speed_y,2));
-
-        if (speed >= max_speed) {
-            this.acceleration = 0;
-        }
-
-        return this._super(world, time, delta);
-    },
-
-    EOF:null
 });
 
-/**
- * Bouncer entity class
- */
-WebTrek.Game.Entity.Bouncer = WebTrek.Game.Entity.MotionBase.extend({
-
-    view_class: (!WebTrek.Client) ? null : 
-        WebTrek.Client.EntityView.BulletView,
-
-    init: function (options) {
-        this._super(_.extend({
-            velocity: [ 1 + Math.random()*6,  1 + Math.random()*6 ],
-            rotation: 0.01 * Math.random(),
-            bounce:   1.0
-        },options));
-    },
-
-    EOF:null
-});
+// Export for CommonJS / node.js
+try { 
+    global.WebTrek.Game.Entity.Bullet = 
+        WebTrek.Game.Entity.Bullet; 
+} catch(e) { }

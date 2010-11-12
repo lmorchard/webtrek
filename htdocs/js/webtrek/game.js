@@ -14,3 +14,8 @@ WebTrek.Game = ( function () {
 
     return $this.init();
 })();
+
+// Export for CommonJS / node.js
+try {
+    globals.WebTrek.Game = WebTrek.Game;
+} catch(e) { }

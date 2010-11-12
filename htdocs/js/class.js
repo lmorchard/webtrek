@@ -59,3 +59,8 @@
     return Class;
   };
 })();
+
+// Export for CommonJS / node.js
+try {
+    globals.Class = Class;
+} catch(e) { }

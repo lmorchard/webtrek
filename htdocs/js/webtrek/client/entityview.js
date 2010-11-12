@@ -8,6 +8,8 @@ WebTrek.Client.EntityView = {};
  */
 WebTrek.Client.EntityView.EntityViewBase = Class.extend({
 
+    DEBUG: true,
+
     init: function (entity, options) {
         this.entity = entity;
         this.options = _.extend({
@@ -15,7 +17,20 @@ WebTrek.Client.EntityView.EntityViewBase = Class.extend({
         }, options);
     },
 
-    draw: function (viewport, time, delta, remainder) {
+    beforeDraw: function (ctx, time, delta, remainder, draw_cb) {
+        ctx.save();
+        ctx.rotate(this.entity.angle);
+        ctx.translate( 0-(this.entity.size[0]/2), 0-(this.entity.size[1]/2) );
+        return this;
+    },
+
+    draw: function (ctx, time, delta, remainder, draw_cb) {
+        return this;
+    },
+
+    afterDraw: function (ctx, time, delta, remainder, draw_cb) {
+        ctx.restore();
+        return this;
     },
 
     EOF:null
@@ -25,30 +40,25 @@ WebTrek.Client.EntityView.EntityViewBase = Class.extend({
  * Avatar view class
  */
 WebTrek.Client.EntityView.AvatarView = WebTrek.Client.EntityView.EntityViewBase.extend({
-
     draw: function (ctx, time, delta, remainder) {
+        var w = this.entity.size[0],
+            h = this.entity.size[1];
 
         ctx.save();
-
-        ctx.rotate(this.entity.angle);
         ctx.fillStyle = 'rgba(255,255,255,0.2)';
         ctx.strokeStyle = 'rgba(255,255,255,0.7)';
         ctx.lineWidth = 1.5;
-
         ctx.beginPath();
-        ctx.moveTo(0, -10);
-        ctx.lineTo(7, 10);
-        ctx.lineTo(-7, 10);
-        ctx.lineTo(0, -10);
+        ctx.moveTo(w/2, 0);
+        ctx.lineTo(w, h);
+        ctx.lineTo(w/2, h-(h/4));
+        ctx.lineTo(0, h);
+        ctx.lineTo(w/2, 0);
         ctx.stroke();
         ctx.fill();
-
         ctx.restore();
-
-    },
-
-    EOF:null
-
+        return this;
+    }
 });
 
 /**
@@ -57,28 +67,20 @@ WebTrek.Client.EntityView.AvatarView = WebTrek.Client.EntityView.EntityViewBase.
 WebTrek.Client.EntityView.BulletView = WebTrek.Client.EntityView.EntityViewBase.extend(
     (function () {
         var full_circle = Math.PI * 2;
-        
         return {
-
             draw: function (ctx, time, delta, remainder) {
-
                 ctx.save();
-
-                ctx.rotate(this.entity.angle);
                 ctx.fillStyle = 'rgba(255,255,255,0.2)';
                 ctx.strokeStyle = 'rgba(255,255,255,0.7)';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.arc(0, 0, 2, 0, full_circle, true);
+                ctx.arc(0, 0, this.entity.size[0], 0, full_circle, true);
                 ctx.closePath();
                 ctx.stroke();
                 ctx.fill();
-
                 ctx.restore();
-
-            },
-
-            EOF:null
+                return this;
+            }
         };
     })()
 );

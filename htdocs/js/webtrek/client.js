@@ -18,46 +18,60 @@ WebTrek.Client.prototype = {
         var $this = this;
 
         $this.world = new WebTrek.Game.World({
-            width: 1500,
+            width:  1500,
             height: 1500
         });
 
-        var KEYS = WebTrek.Client.Input.Keyboard.KEYS;
-        $this.keyboard = new WebTrek.Client.Input.Keyboard({
-            target: this.options.document,
-            bindings: {
-                'thrust': KEYS.up,
-                'reverse': KEYS.down,
-                'rotate_left': KEYS.left,
-                'rotate_right': KEYS.right,
-                'fire': KEYS.space
-            }
-        });
-
         $this.viewport = new WebTrek.Client.Viewport({
-            world: $this.world,
             canvas: this.options.document.getElementById("display"),
+            world: $this.world,
+            fullscreen: true,
             camera_center: [ 
                 $this.world.options.width / 2, 
                 $this.world.options.height / 2
             ], 
             hud_elements: {
                 fps: new WebTrek.Client.Hud.FPS({ }),
-                input_state: new WebTrek.Client.Hud.InputState({ 
-                    keyboard: $this.keyboard
-                }),
                 reticule: new WebTrek.Client.Hud.Reticule({ })
-            },
-            fullscreen: true
+            }
         });
 
-        var avatar = new WebTrek.Game.Entity.Avatar({
-        //var avatar = new WebTrek.Game.Entity.Bouncer({
-            position: [ 400, 400 ]
+        var KEYS = WebTrek.Client.Input.Keyboard.KEYS;
+        $this.player = new WebTrek.Game.Player({
+            keyboard: new WebTrek.Client.Input.Keyboard({
+                target: this.options.document,
+                bindings: {
+                    'thrust': KEYS.up,
+                    'reverse': KEYS.down,
+                    'rotate_left': KEYS.left,
+                    'rotate_right': KEYS.right,
+                    'fire': KEYS.space
+                }
+            }),
+            avatar: new WebTrek.Game.Entity.Avatar({
+                position: [ 400, 400 ]
+            })
         });
 
-        $this.world.addEntity(avatar);
-        $this.viewport.startTracking(avatar);
+        /*
+        $this.viewport.addHudElement(
+            'input_state', 
+            new WebTrek.Client.Hud.InputState({ 
+                keyboard: $this.player.keyboard
+            })
+        );
+
+        $this.viewport.addHudElement(
+            'avatar_state', 
+            new WebTrek.Client.Hud.AvatarState({ 
+                avatar: $this.player.avatar
+            })
+        );
+        */
+
+        $this.world.addPlayer($this.player);
+        $this.world.addEntity($this.player.avatar);
+        $this.viewport.startTracking($this.player.avatar);
 
         $this.loop = new WebTrek.Game.Loop({
             ontick: function (time, delta) {
@@ -69,7 +83,8 @@ WebTrek.Client.prototype = {
             }
         });
 
-        for (var i=0; i<15; i++) {
+        /*
+        for (var i=0; i<5; i++) {
             $this.world.addEntity(new WebTrek.Game.Entity.Bouncer({
                 position: [ 
                     $this.world.options.width * Math.random(), 
@@ -77,7 +92,6 @@ WebTrek.Client.prototype = {
                 ]
             }));
         }
-        /*
         */
 
         $this.loop.start();

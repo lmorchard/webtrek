@@ -1,3 +1,6 @@
+/**
+ * Package for entity views
+ */
 WebTrek.Client.EntityView = {};
 
 /**

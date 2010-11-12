@@ -84,9 +84,9 @@ WebTrek.Client.Hud.TextBase = WebTrek.Client.Hud.ElementBase.extend({
 WebTrek.Client.Hud.FPS = WebTrek.Client.Hud.TextBase.extend({
     updateText: function (tick, delta, remainder) {
         var fps = this.viewport.stats.frame_count / ( tick / 1000 );
-        var text = 'FPS: ' + parseInt(fps);
+        var text = 'FPS: ' + parseInt(fps, 10);
         return text;
-    },
+    }
 });
 
 /**
@@ -107,10 +107,36 @@ WebTrek.Client.Hud.InputState = WebTrek.Client.Hud.TextBase.extend({
         this.position = [ 10, height-20 ];
     },
     updateText: function () {
-        var out = [];
-        for (b in this.keyboard.options.bindings) {
+        var out = [],
+            bs = this.keyboard.options.bindings;
+        for (var b in bs) {
             out.push(b+': '+this.keyboard.on(b));
         }
         return 'KEYS: ' + out.join('; ');
+    }
+});
+
+WebTrek.Client.Hud.AvatarState = WebTrek.Client.Hud.InputState.extend({
+    init: function (options) {
+        this._super(_.extend({
+            color: 'rgb(255,0,0)',
+            avatar: null
+        }, options));
     },
+    onAdd: function (viewport, width, height) {
+        this.position = [ 10, height-40 ];
+    },
+    onResize: function (width, height) {
+        this.position = [ 10, height-40 ];
+    },
+    updateText: function () {
+        return _.template(
+            'SHIP: '+
+            'act: <%=action.thrust%>, <%=action.rotate%>, <%=action.fire%>'+
+            'angle=<%=Math.round(angle)%>; vel=<%=velocity[0]%>, '+
+            '<%=velocity[1]%>; pos=<%=position[0]%>, <%=position[1]%>; '+
+            '',
+            this.options.avatar
+        );
+    }
 });

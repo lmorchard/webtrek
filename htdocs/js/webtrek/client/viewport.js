@@ -24,7 +24,7 @@ WebTrek.Client.Viewport.prototype = {
             hud_elements: {},
 
             grid_cell_size: 100,
-            grid_line_width: 0.5,
+            grid_line_width: 1,
             grid_cell_color: 'rgba(255,255,255,0.3)',
             background_wipe: "rgba(0, 0, 0, 1.0)",
             // To see trails:
@@ -33,7 +33,6 @@ WebTrek.Client.Viewport.prototype = {
             canvas: null,
             fullscreen: true,
             background: '#000',
-            fullscreen_cb: null
         
         }, options);
 
@@ -58,7 +57,7 @@ WebTrek.Client.Viewport.prototype = {
         this.setCameraCenter(this.options.camera_center);
 
         if (this.options.fullscreen) {
-            this.initFullscreen(this.options.fullscreen_cb);
+            this.initFullscreen();
         }
 
         this.hud_elements = {};
@@ -104,7 +103,6 @@ WebTrek.Client.Viewport.prototype = {
     initFullscreen: function (fs_callback) {
         var $this = this;
         window.onresize = function() {
-            
             $this.canvas.width = window.innerWidth || 
                 document.documentElement.clientWidth;
             $this.canvas.height = document.documentElement.clientHeight;
@@ -113,15 +111,8 @@ WebTrek.Client.Viewport.prototype = {
 
             var hud_elements = $this.hud_elements;
             for (var id in hud_elements) {
-                hud_elements[id].onResize(
-                    $this.canvas.width, $this.canvas.height
-                );
+                hud_elements[id].onResize($this.canvas.width, $this.canvas.height);
             }
-            
-            if (fs_callback) { 
-                fs_callback($this.canvas.width, $this.canvas.height);
-            }
-
         };
         window.onresize();
     },

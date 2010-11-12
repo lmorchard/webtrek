@@ -206,10 +206,10 @@ WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
 
     init: function (options) {
         this._super(_.extend({
-            max_speed: 0.425,
+            max_speed: 0.4125,
             acceleration: 0.5,
             bounce: 1,
-            max_bounces: 3
+            max_bounces: 2
         },options));
     },
 

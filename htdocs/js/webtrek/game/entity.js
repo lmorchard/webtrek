@@ -190,7 +190,7 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
 
     init: function (options) {
         this._super(_.extend({
-            size: [ 20, 30 ],
+            size: [ 15, 20 ],
             rotation_per_delta: 0.005,
             thrust_accel:  500,
             reverse_accel: 500,

@@ -6,6 +6,7 @@ WebTrek.Client = Class.extend(function() {
     var OPS = WebTrek.Network.OPS;
     var match = Match;
     var _a = match.incl;
+    var vmath = WebTrek.Math;
     
     return {
 
@@ -173,6 +174,39 @@ WebTrek.Client = Class.extend(function() {
         handleDisconnect: function () {
         },
 
+        updateEntity: function (data) {
+            var entity = this.world.findEntity(data.id);
+            if (!entity) { 
+                // We're missing an entity, so get a snapshot.
+                this.send(OPS.WANT_SNAPSHOT);
+            } else {
+
+                if (data.position) {
+
+                    var x_diff = Math.abs(entity.position[0] - data.position[0]) ,
+                        y_diff = Math.abs(entity.position[1] - data.position[1]);
+
+                    if (x_diff > 4 || y_diff > 4) {
+                        entity.position = data.position;
+                    } else if (x_diff > 0.01 || y_diff > 0.01) {
+                        entity.position = vector_add(
+                            entity.position, 
+                            vmath.vector_div(
+                                vmath.vector_sub(data.position, entity.position), 
+                                10
+                            )
+                        );
+                    }
+
+                    delete data.position;
+                }
+
+                for (var name in data) {
+                    entity[name] = data[name];
+                }
+            }
+        },
+
         handleMessage: function (msg) {
             var $this = this,
                 data = JSON.parse(msg),
@@ -209,15 +243,7 @@ WebTrek.Client = Class.extend(function() {
 
                 [ OPS.ENTITY_UPDATE, Number, Object ],
                 function (time, entity_data) {
-                    var entity = $this.world.findEntity(entity_data.id);
-                    if (entity) { 
-                        for (var name in entity_data) {
-                            entity[name] = entity_data[name];
-                        }
-                    } else {
-                        // We're missing an entity, so get a snapshot.
-                        $this.send(OPS.WANT_SNAPSHOT);
-                    }
+                    $this.updateEntity(entity_data);
                 },
 
                 [ OPS.ENTITY_REMOVE, Number, Number ],

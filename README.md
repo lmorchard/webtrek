@@ -18,7 +18,7 @@ websockets, and JavaScript. It might even end up being fun!
     * express
     * ejs
     * socket.io
-    * vows
+    * nodeunit
 
 ## Running a server
 
@@ -27,4 +27,4 @@ websockets, and JavaScript. It might even end up being fun!
 
 ## Running tests
 
-* `vows test/*.js --spec`
+* `nodeunit test`

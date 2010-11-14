@@ -15,6 +15,8 @@ WebTrek.Game.Loop = Class.extend({
             max_delta: 250
         }, options);
 
+        this.hub = new WebTrek.Utils.PubSub();
+
         this.tick = this.options.tick;
         
         this._timer = null;
@@ -22,65 +24,59 @@ WebTrek.Game.Loop = Class.extend({
     },
 
     start: function (tick, until) {
-
         if (tick) { this.tick = tick; }
         if (until) { this.options.until = until; }
 
         this._kill = false;
+        this.accum = 0;
+        this.tm_curr = new Date().getTime();
 
-        var $this = this,
-            ontick = $this.options.ontick,
-            ondone = $this.options.ondone,
-            tm_curr = new Date().getTime(),
-            tm_new = null,
-            delta = 0,
-            accum = 0,
-            tick_duration = $this.options.tick_duration,
-            max_delta = $this.options.max_delta;
+        this._timer = setInterval(
+            _(this.tickOnce).bind(this), 
+            this.options.interval_delay
+        );
 
-        $this._timer = setInterval(function () {
+        this.hub.publish('start');
+    },
 
-            // Bail if the loop is being killed.
-            if ($this._kill) { return; }
+    tickOnce: function () {
+        var ontick = this.options.ontick,
+            ondone = this.options.ondone,
+            tick_duration = this.options.tick_duration,
+            max_delta = this.options.max_delta;
 
-            // Figure out the time delta since the last loop run
-            tm_new = new Date().getTime();
-            delta = (tm_new - tm_curr);
-            tm_curr = tm_new;
+        // Bail if the loop is being killed.
+        if (this._kill) { return; }
 
-            // Limit any loop catch-up to a maximum slice
-            if (delta > max_delta) { delta = max_delta; }
+        // Figure out the time delta since the last loop run
+        var tm_new = new Date().getTime();
+        var delta = (tm_new - this.tm_curr);
+        this.tm_curr = tm_new;
 
-            // Advance the time debt by delta since last loop run.
-            // Every now and then, this might result in an extra tick
-            accum += delta;
+        // Limit any loop catch-up to a maximum slice
+        if (delta > max_delta) { delta = max_delta; }
 
-            // Play catch-up with loop ticks until the time debt is less
-            // than the tick duration.
-            var should_kill = false;
-            while (accum >= tick_duration) {
-                accum -= tick_duration; // Pay off time debt.
-                if (ontick) {
-                    ontick($this.tick, tick_duration); // Perform game tick.
-                }
+        // Advance the time debt by delta since last loop run.
+        // Every now and then, this might result in an extra tick
+        this.accum += delta;
 
-                $this.tick += tick_duration; // Advance the game clock.
-                if ($this.options.until && $this.tick >= $this.options.until) {
-                    break;
-                }
-            }
+        // Play catch-up with loop ticks until the time debt is less
+        // than the tick duration.
+        var should_kill = false;
+        while (this.accum >= tick_duration) {
+            this.accum -= tick_duration; // Pay off time debt.
+            this.hub.publish('tick', this.tick, tick_duration);
+            this.tick += tick_duration; // Advance the game clock.
+        }
 
-            // Done catching up with the tick, report stats
-            if (ondone) {
-                ondone($this.tick, tick_duration, accum / tick_duration);
-            }
-            
-            // If given a run-until time, self-terminate if it's been reached.
-            if ($this.options.until && $this.tick >= $this.options.until) {
-                $this.kill();
-            }
-            
-        }, $this.options.interval_delay);
+        // Done catching up with the tick, report stats
+        this.hub.publish('done', this.tick, tick_duration, 
+            this.accum / tick_duration);
+        
+        // If given a run-until time, self-terminate if it's been reached.
+        if (this.options.until && this.tick >= this.options.until) {
+            this.kill();
+        }
     },
 
     kill: function() {
@@ -88,9 +84,7 @@ WebTrek.Game.Loop = Class.extend({
         if (this._timer) { 
             clearInterval(this._timer); 
         }
-        if (this.options.onkill) { 
-            this.options.onkill(this); 
-        }
+        this.hub.publish('kill');
     },
 
     EOF:null

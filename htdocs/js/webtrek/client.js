@@ -1,128 +1,241 @@
 /**
  * Main driver for webtrek
  */
-WebTrek.Client = Class.extend({
+var util;
+try {
+    util = require('util');
+} catch (e) { }
 
-    init: function (options) {
-        this.options = _.extend({
-            document: document,
-            debug: true,
-            world_size: [ 1500, 1500 ]
-        }, options);
-    },
+WebTrek.Client = Class.extend(function() {
 
-    start: function () {
-        var $this = this;
+    var OPS = WebTrek.Network.OPS;
+    var match = Match;
+    var _a = match.incl;
+    
+    return {
 
-        $this.world = new WebTrek.Game.World({
-            width:  this.options.world_size[0],
-            height: this.options.world_size[1]
-        });
+        init: function (options) {
+            this.options = _.extend({
+                document: null,
+                socket: null,
+                debug: true,
+                world_size: [ 1500, 1500 ]
+            }, options);
 
-        $this.viewport = new WebTrek.Client.Viewport({
-            canvas: this.options.document.getElementById("display"),
-            world: $this.world,
-            fullscreen: true,
-            camera_center: [ 
-                $this.world.options.width / 2, 
-                $this.world.options.height / 2
-            ], 
-            hud_elements: {
-                reticule: new WebTrek.Client.Hud.Reticule({ })
-            }
-        });
+            var $this = this;
 
-        var KEYS = WebTrek.Client.Input.Keyboard.KEYS;
-        $this.player = new WebTrek.Game.Player({
-            keyboard: new WebTrek.Client.Input.Keyboard({
-                target: this.options.document,
-                bindings: {
-                    'thrust': KEYS.up,
-                    'reverse': KEYS.down,
-                    'rotate_left': KEYS.left,
-                    'rotate_right': KEYS.right,
-                    'fire': KEYS.space
-                }
-            }),
-            avatar: new WebTrek.Game.Entity.Avatar({
-                position: [ 400, 400 ]
-            })
-        });
+            this.hub = new WebTrek.Utils.PubSub();
+            this.socket = this.options.socket;
+            this.connected = false;
 
-        if (this.options.debug) {
-            $this.viewport.addHudElement(
-                'fps', new WebTrek.Client.Hud.FPS({ })
-            );
-
-            $this.viewport.addHudElement(
-                'input_state', 
-                new WebTrek.Client.Hud.InputState({ 
-                    keyboard: $this.player.keyboard
+            $this.setWorld(
+                new WebTrek.Game.World({
+                    width:  this.options.world_size[0],
+                    height: this.options.world_size[1],
+                    is_server: false
                 })
             );
 
-            /*
-            $this.viewport.addHudElement(
-                'avatar_state', 
-                new WebTrek.Client.Hud.AvatarState({ 
-                    avatar: $this.player.avatar
-                })
-            );
-            */
-        }
+            var document = $this.options.document;
+            if (document) {
 
-        $this.world.addPlayer($this.player);
-        $this.world.addEntity($this.player.avatar);
-        $this.viewport.startTracking($this.player.avatar);
-
-        $this.loop = new WebTrek.Game.Loop({
-            ontick: function (time, delta) {
-                $this.world.update(time, delta);
-            },
-            ondone: function (time, delta, remainder) {
-                $this.viewport.update(time, delta, remainder);
-            }
-        });
-
-        $this.loop.start();
-
-        $this.doSocketFun();
-        return this;
-    },
-
-    doSocketFun: function () {
-        var $this = this;
-
-        var socket = new io.Socket(null, {
-            // rememberTransport: false,
-        });
-
-        socket.on('connect', function () {
-            console.log('connected');
-            socket.send("HELLO THERE");
-
-            (function () {
-                var cnt = 0;
-                var timer = setInterval(function () {
-                    socket.send("CLIENT COUNT " + cnt);
-                    if (cnt++ >= 100) { 
-                        socket.send("Okay, done counting");
-                        clearInterval(timer);
+                $this.viewport = new WebTrek.Client.Viewport({
+                    canvas: document.getElementById("display"),
+                    world: $this.world,
+                    fullscreen: true,
+                    camera_center: [ 
+                        $this.world.options.width / 2, 
+                        $this.world.options.height / 2
+                    ], 
+                    hud_elements: {
+                        reticule: new WebTrek.Client.Hud.Reticule({ })
                     }
-                }, 10);
-            })();
+                });
 
-        });
-        socket.on('disconnect', function () {
-            console.log('disconnected');
-        });
-        socket.on('message', function (data) {
-            console.log("MSG: " + data);
-        });
-        socket.connect();
-        
-    },
+                var KEYS = WebTrek.Client.Input.Keyboard.KEYS;
+                $this.keyboard = new WebTrek.Client.Input.Keyboard({
+                    target: document,
+                    bindings: {
+                        'thrust': KEYS.up,
+                        'reverse': KEYS.down,
+                        'rotate_left': KEYS.left,
+                        'rotate_right': KEYS.right,
+                        'fire': KEYS.space
+                    }
+                });
 
-    EOF:null
+            }
 
-});
+            if (this.options.debug && $this.viewport) {
+                
+                $this.viewport.addHudElement(
+                    'fps', new WebTrek.Client.Hud.FPS({ })
+                );
+
+                $this.viewport.addHudElement(
+                    'input_state', 
+                    new WebTrek.Client.Hud.InputState({ 
+                        keyboard: $this.keyboard
+                    })
+                );
+                /*
+                $this.viewport.addHudElement(
+                    'avatar_state', 
+                    new WebTrek.Client.Hud.AvatarState({ 
+                        avatar: $this.player.avatar
+                    })
+                );
+                */
+            }
+
+            $this.loop = new WebTrek.Game.Loop();
+            $this.loop.hub.subscribe('tick', function (time, delta) {
+                $this.world.update(time, delta);
+            });
+            $this.loop.hub.subscribe('done', function (time, delta, remainder) {
+                if ($this.viewport) {
+                    $this.viewport.update(time, delta, remainder);
+                }
+            });
+        },
+
+        setWorld: function (world) {
+            this.world = world;
+        },
+
+        log: function (msg) {
+            if (util) { util.log(msg); }
+            else { console.log(msg); }
+        },
+
+        debug: function (msg) {
+            if (util) { util.debug(msg); }
+            else { console.log('DEBUG: '+msg); }
+        },
+
+        start: function () {
+            var $this = this;
+
+            $this.loop.start();
+
+            $this.connect();
+
+            return this;
+        },
+
+        connect: function (options) {
+            if (!this.socket) {
+                this.socket = new io.Socket(null, { 
+                    // rememberTransport: false,
+                });
+            }
+            var $this = this, 
+                socket = this.socket;
+            socket.on('connect', function () {
+                $this.connected = true;
+                $this.send(OPS.HELLO);
+            });
+            socket.on('disconnect',
+                _(this.handleDisconnect).bind(this));
+            socket.on('message',
+                _(this.handleMessage).bind(this));
+            socket.connect();
+            return socket;
+        },
+
+        sendRaw: function (data) {
+            var msg = JSON.stringify(data);
+            this.socket.send(msg);
+            return this;
+        },
+
+        send: function (op, params) {
+            return this.sendRaw([op, (new Date().getTime()), params]);
+        },
+
+        handleConnect: function () {
+        },
+
+        handleDisconnect: function () {
+        },
+
+        handleMessage: function (msg) {
+            console.log(msg);
+            var $this = this,
+                data = JSON.parse(msg),
+                now = new Date().getTime();
+                
+            match(
+                
+                [ OPS.HELLO, Number, Object ],
+                function (time, args) { 
+                    $this.connected = true;
+                    $this.client_id = args.client_id;
+                    $this.send(OPS.WANT_SNAPSHOT);
+                    $this.send(OPS.WANT_PLAYER_JOIN);
+                },
+                
+                [ OPS.PING, Number ], 
+                function () { $this.send(OPS.PONG); },
+                
+                [ OPS.SNAPSHOT, Number, Object ], 
+                function (time, snapshot) { 
+                    $this.loop.tick = snapshot.tick;
+                    $this.world.addSerializedEntities(snapshot.world.entities);
+                },
+
+                [ OPS.ENTITY_NEW, Number, Object ],
+                function (time, entity_data) {
+                    $this.world.deserializeEntity(entity_data);
+                },
+
+                [ OPS.ENTITY_UPDATE, Number, Object ],
+                function (time, entity_data) {
+                    var id = entity_data.id,
+                        entity = $this.world.findEntity(id);
+                    if (!entity) { return; }
+                    for (var name in entity_data) {
+                        entity[name] = entity_data[name];
+                    }
+                },
+
+                [ OPS.ENTITY_REMOVE, Number, Number ],
+                function (time, entity_id) {
+                    $this.world.removeEntity(entity_id);
+                },
+
+                [ OPS.PLAYER_NEW, Number, Object ],
+                function (time, player_data) {
+                    player_data.world = $this.world;
+                    var new_player = new WebTrek.Game.Player(player_data);
+                    $this.world.addPlayer(new_player);
+                },
+
+                [ OPS.PLAYER_REMOVE, Number, Number ],
+                function (time, player_id) {
+                    $this.world.removePlayer(player_id);
+                },
+
+                [ OPS.PLAYER_YOU, Number, Number ],
+                function (time, player_id) {
+                    $this.player = $this.world.findPlayer(player_id);
+                    $this.player.client = $this;
+                    $this.player.keyboard = $this.keyboard;
+                    $this.viewport.startTracking($this.player.avatar);
+                },
+
+                [ OPS.WHAT ],
+                function () {
+                    // Ignoring, but should do something here.
+                },
+
+                /* default */
+                function () { $this.send(OPS.WHAT); }
+
+            )(data);
+        },
+
+        EOF:null
+
+    };
+}());

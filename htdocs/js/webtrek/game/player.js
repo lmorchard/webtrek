@@ -57,7 +57,6 @@ WebTrek.Game.Player = Class.extend(function () {
             var a_old = JSON.stringify(this.avatar.action),
                 a_new = JSON.stringify(action);
             if (a_old != a_new) {
-                console.log("SENDING ACTION " + a_new);
                 this.client.send(OPS.PLAYER_ACTION, action);
             }
             this.avatar.setAction(action);

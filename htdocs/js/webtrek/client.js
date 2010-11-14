@@ -1,11 +1,6 @@
 /**
  * Main driver for webtrek
  */
-var util;
-try {
-    util = require('util');
-} catch (e) { }
-
 WebTrek.Client = Class.extend(function() {
 
     var OPS = WebTrek.Network.OPS;
@@ -104,13 +99,11 @@ WebTrek.Client = Class.extend(function() {
         },
 
         log: function (msg) {
-            if (util) { util.log(msg); }
-            else { console.log(msg); }
+            console.log(msg);
         },
 
         debug: function (msg) {
-            if (util) { util.debug(msg); }
-            else { console.log('DEBUG: '+msg); }
+            console.log('DEBUG: '+msg);
         },
 
         start: function () {
@@ -160,7 +153,6 @@ WebTrek.Client = Class.extend(function() {
         },
 
         handleMessage: function (msg) {
-            console.log(msg);
             var $this = this,
                 data = JSON.parse(msg),
                 now = new Date().getTime();

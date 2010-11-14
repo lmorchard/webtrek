@@ -192,9 +192,9 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
         this._super(_.extend({
             size: [ 20, 30 ],
             rotation_per_delta: 0.005,
-            thrust_accel:  700,
-            reverse_accel: 700,
-            max_speed: 500,
+            thrust_accel:  500,
+            reverse_accel: 500,
+            max_speed: 300,
             bounce: 0.8,
             reload_delay: 250,
             action: {
@@ -277,7 +277,7 @@ WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
     init: function (options) {
         this._super(_.extend({
             size: [ 2, 2 ],
-            max_speed: 700,
+            max_speed: 400,
             acceleration: 0,
             time_to_live: 5000,
             bounce: 1,
@@ -311,8 +311,6 @@ WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
             Math.cos(angle-Math.PI/2) * (max_speed) + owner.velocity[0],
             Math.sin(angle-Math.PI/2) * (max_speed) + owner.velocity[1]
         ];
-
-        // this.world.updateEntity(this);
     },
 
     /** Serialize this entity into an object suitable for init() */

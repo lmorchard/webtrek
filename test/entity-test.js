@@ -14,6 +14,7 @@ require('underscore');
 require('class');
 require('webtrek');
 require('webtrek/utils');
+require('webtrek/network');
 require('webtrek/game');
 require('webtrek/game/world');
 require('webtrek/game/entity');

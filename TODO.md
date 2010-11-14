@@ -2,6 +2,10 @@
 
 ## Soon
 
+* Track net stats, count bytes / messages / etc in server
+    * HUD element showing readout
+* Retroactive time adjustment for events to smooth things out
+    * Stutter turning issue
 * Combine messages into single periodic packets
     * See flush_queue()
 * Rate-adaptive update stream like wpilot
@@ -10,8 +14,6 @@
 * Collision detection!!!
 * Don't render entity views that lie outside the viewport camera
 * Don't get updates for entities outside viewport?
-* Track net stats, count bytes / messages / etc in server
-    * HUD element showing readout
 * Require ping/pong between server/client at least every 2000ms
 
 ## Blue sky

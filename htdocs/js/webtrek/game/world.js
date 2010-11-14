@@ -11,7 +11,7 @@ WebTrek.Game.World = Class.extend({
         }, options);
 
         this.hub = new WebTrek.Utils.PubSub();
-
+        this.time = 0;
         this.entity_last_id = 0;
         this.entities = {};
         this.player_last_id = 0;
@@ -64,14 +64,16 @@ WebTrek.Game.World = Class.extend({
         delete this.players[player_id];
     },
 
-    update: function (tick, delta) {
+    update: function (time, delta) {
+        this.time = time;
+        this.hub.publish('beforeUpdate', [ time, delta ]);
         for (var id in this.players) {
-            this.players[id].update(tick, delta);
+            this.players[id].update(time, delta);
         }
         for (var id in this.entities) {
-            this.entities[id].update(tick, delta);
+            this.entities[id].update(time, delta);
         }
-        this.hub.publish('update', [ tick, delta ]);
+        this.hub.publish('update', [ time, delta ]);
     },
 
     /** Prepare a network-ready snapshot of the world */

@@ -28,3 +28,11 @@ websockets, and JavaScript. It might even end up being fun!
 ## Running tests
 
 * `nodeunit test`
+
+## Credits
+
+* Inspiration and generous hunks of code stolen from [wpilot][]
+    * Why not just hack on [wpilot][]? I wanted to organize things differently,
+        and learn by building from a (mostly) clean slate.
+
+[wpilot]: https://github.com/jfd/wpilot/

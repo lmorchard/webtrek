@@ -189,7 +189,7 @@ WebTrek.Client = Class.extend(function() {
                     if (x_diff > 4 || y_diff > 4) {
                         entity.position = data.position;
                     } else if (x_diff > 0.01 || y_diff > 0.01) {
-                        entity.position = vector_add(
+                        entity.position = vmath.vector_add(
                             entity.position, 
                             vmath.vector_div(
                                 vmath.vector_sub(data.position, entity.position), 

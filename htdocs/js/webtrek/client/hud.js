@@ -122,6 +122,61 @@ WebTrek.Client.Hud.FPS = WebTrek.Client.Hud.TextBase.extend({
 });
 
 /**
+ * Netstat meter
+ */
+WebTrek.Client.Hud.Netstat = WebTrek.Client.Hud.TextBase.extend({
+    
+    init: function (options) {
+        this._super(_.extend({
+            color: 'rgb(255,0,0)',
+            stats: null,
+            update_period: 150
+        }, options));
+
+        this.stats = this.options.stats;
+        this.last_stats = _.clone(this.options.stats);
+        this.last_tick = 0;
+        this.sum_latency = 0
+        this.count_latency = 0;
+        this.text = 'NET:';
+    },
+
+    onResize: function (width, height) {
+        this.position = [ 10, height-60 ];
+    },
+
+    calcRate: function (stat) {
+        return Math.round( stat.bytes / stat.messages );
+    },
+    
+    updateText: function (tick, delta, remainder) {
+        if ( (tick-this.last_tick) < this.options.update_period ) {
+
+            this.sum_latency += this.stats.in.latency;
+            this.count_latency++;
+        
+        } else {
+
+            var in_rate     = this.calcRate(this.stats.in),
+                out_rate    = this.calcRate(this.stats.out),
+                latency     = this.stats.in.latency,
+                avg_latency = Math.round( this.sum_latency / this.count_latency );
+
+            this.text = 'NET: Rate = ' + in_rate + ' in / ' + out_rate + ' out; Latency = ' + avg_latency + ' avg / ' + latency + ' now';
+
+            this.sum_latency = 0;
+            this.count_latency = 0;
+            this.last_tick = tick;
+            this.last_stats = _.clone(this.stats);
+
+        }
+        return this.text;
+    }
+
+});
+
+
+/**
  * Input states
  */
 WebTrek.Client.Hud.InputState = WebTrek.Client.Hud.TextBase.extend({

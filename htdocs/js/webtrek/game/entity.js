@@ -246,10 +246,9 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
     },
 
     fireBullet: function (time, delta) {
-        if (!this.world.options.is_server) {
-            // Only the server gets to fire real bullets.
-            return;
-        }
+        // Only the server gets to fire real bullets.
+        if (!this.world.options.is_server) { return; }
+
         var new_bullet = new WebTrek.Game.Entity.Bullet();
         new_bullet.launchFromOwner(this);
         this.world.addEntity(new_bullet);

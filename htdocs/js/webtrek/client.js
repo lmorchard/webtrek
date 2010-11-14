@@ -19,6 +19,13 @@ WebTrek.Client = Class.extend(function() {
 
             var $this = this;
 
+            this.stats = {
+                net: {
+                    in:  { messages: 0, bytes: 0, last: null },
+                    out: { messages: 0, bytes: 0, last: null },
+                }
+            };
+
             this.hub = new WebTrek.Utils.PubSub();
             this.socket = this.options.socket;
             this.connected = false;
@@ -61,7 +68,7 @@ WebTrek.Client = Class.extend(function() {
 
             }
 
-            if (this.options.debug && $this.viewport) {
+            if ($this.viewport) {
                 
                 $this.viewport.addHudElement(
                     'fps', new WebTrek.Client.Hud.FPS({ })
@@ -73,6 +80,14 @@ WebTrek.Client = Class.extend(function() {
                         keyboard: $this.keyboard
                     })
                 );
+
+                $this.viewport.addHudElement(
+                    'netstat',
+                    new WebTrek.Client.Hud.Netstat({
+                        stats: $this.stats.net
+                    })
+                );
+
                 /*
                 $this.viewport.addHudElement(
                     'avatar_state', 
@@ -139,6 +154,11 @@ WebTrek.Client = Class.extend(function() {
         sendRaw: function (data) {
             var msg = JSON.stringify(data),
                 now = new Date().getTime();
+
+            this.stats.net.out.last = now;
+            this.stats.net.out.messages++;
+            this.stats.net.out.bytes += msg.length;
+
             this.socket.send(msg);
             return this;
         },
@@ -157,6 +177,11 @@ WebTrek.Client = Class.extend(function() {
             var $this = this,
                 data = JSON.parse(msg),
                 now = new Date().getTime();
+
+            this.stats.net.in.last = now;
+            this.stats.net.in.messages++;
+            this.stats.net.in.bytes += msg.length;
+            this.stats.net.in.latency = now - data[1];
                 
             match(
                 
@@ -184,11 +209,14 @@ WebTrek.Client = Class.extend(function() {
 
                 [ OPS.ENTITY_UPDATE, Number, Object ],
                 function (time, entity_data) {
-                    var id = entity_data.id,
-                        entity = $this.world.findEntity(id);
-                    if (!entity) { return; }
-                    for (var name in entity_data) {
-                        entity[name] = entity_data[name];
+                    var entity = $this.world.findEntity(entity_data.id);
+                    if (entity) { 
+                        for (var name in entity_data) {
+                            entity[name] = entity_data[name];
+                        }
+                    } else {
+                        // We're missing an entity, so get a snapshot.
+                        $this.send(OPS.WANT_SNAPSHOT);
                     }
                 },
 

@@ -59,7 +59,9 @@ WebTrek.Game.Player = Class.extend(function () {
             if (a_old != a_new) {
                 this.client.send(OPS.PLAYER_ACTION, action);
             }
-            this.avatar.setAction(action);
+            if (this.avatar.world.isServer()) {
+                this.avatar.setAction(action);
+            }
         },
 
         destroy: function () {

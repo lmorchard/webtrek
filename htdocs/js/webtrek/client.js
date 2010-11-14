@@ -139,7 +139,6 @@ WebTrek.Client = Class.extend(function() {
         sendRaw: function (data) {
             var msg = JSON.stringify(data),
                 now = new Date().getTime();
-            console.log(now + " C>S: " + msg);
             this.socket.send(msg);
             return this;
         },
@@ -158,7 +157,6 @@ WebTrek.Client = Class.extend(function() {
             var $this = this,
                 data = JSON.parse(msg),
                 now = new Date().getTime();
-            console.log(now + " S>C: " + msg);
                 
             match(
                 

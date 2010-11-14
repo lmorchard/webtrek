@@ -18,6 +18,10 @@ WebTrek.Game.World = Class.extend({
         this.players = {};
     },
 
+    isServer: function () {
+        return !!this.options.is_server;
+    },
+
     addEntity: function (entity) {
         if (null === entity.id) {
             entity.id = this.entity_last_id++;

@@ -21,11 +21,11 @@ WebTrek.Client.Viewport = Class.extend(function () {
                 hud_elements: {},
 
                 grid_cell_size: 100,
-                grid_line_width: 1,
-                grid_cell_color: 'rgba(255,255,255,0.3)',
+                grid_line_width: 2,
+                grid_cell_color: 'rgba(32,32,32,1.0)',
                 background_wipe: "rgba(0, 0, 0, 1.0)",
                 // To see trails:
-                // background_wipe: "rgba(0, 0, 0, 0.1)",
+                // background_wipe: "rgba(0, 0, 0, 0.3)",
 
                 canvas: null,
                 fullscreen: true,
@@ -95,6 +95,19 @@ WebTrek.Client.Viewport = Class.extend(function () {
         this.tracking = null;
     },
 
+    initNonFullscreen: function () {
+        var $this = this;
+        $this.canvas.width = 640;
+        $this.canvas.height = 480;
+
+        $this.setCameraCenter($this.camera.center);
+
+        var hud_elements = $this.hud_elements;
+        for (var id in hud_elements) {
+            hud_elements[id].onResize($this.canvas.width, $this.canvas.height);
+        }
+    },
+
     initFullscreen: function (fs_callback) {
         var $this = this;
         window.onresize = function() {
@@ -118,7 +131,7 @@ WebTrek.Client.Viewport = Class.extend(function () {
         this.wipe(tick, delta, remainder);
 
         if (this.tracking) {
-            this.setCameraCenter(this.tracking.position);
+            this.setCameraCenter(this.tracking.state.position);
         }
 
         this.draw_backdrop(tick, delta, remainder);
@@ -140,12 +153,12 @@ WebTrek.Client.Viewport = Class.extend(function () {
             var entity = this.world.entities[id],
             view = entity.getView();
             if (view) { 
-                var point = vmath.vector_sub(entity.position, this.camera.lt);
+                var point = vmath.vector_sub(entity.state.position, this.camera.lt);
                 ctx.save();
                 ctx.translate(point[0], point[1]);
                 view.beforeDraw(ctx, tick, delta, remainder)
-                .draw(ctx, tick, delta, remainder)
-                .afterDraw(ctx, tick, delta, remainder); 
+                    .draw(ctx, tick, delta, remainder)
+                    .afterDraw(ctx, tick, delta, remainder); 
                 ctx.restore();
             }
             }}

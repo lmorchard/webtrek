@@ -12,9 +12,9 @@ WebTrek.Game.World = Class.extend({
 
         this.hub = new WebTrek.Utils.PubSub();
         this.time = 0;
-        this.entity_last_id = 0;
+        this.entity_last_id = -1;
         this.entities = {};
-        this.player_last_id = 0;
+        this.player_last_id = -1;
         this.players = {};
     },
 
@@ -23,11 +23,12 @@ WebTrek.Game.World = Class.extend({
     },
 
     addEntity: function (entity) {
-        if (null === entity.id) {
-            entity.id = this.entity_last_id++;
+        if (null === entity.options.id) {
+            while (this.entities[++this.entity_last_id]);
+            entity.options.id = this.entity_last_id;
         }
         entity.world = this;
-        this.entities[entity.id] = entity;
+        this.entities[entity.options.id] = entity;
         this.hub.publish('addEntity', entity);
     },
 
@@ -41,13 +42,15 @@ WebTrek.Game.World = Class.extend({
 
     removeEntity: function (entity_id) {
         var entity = this.entities[entity_id];
+        if (!entity) { return; }
         this.hub.publish('removeEntity', entity);
         delete this.entities[entity_id];
     },
 
     addPlayer: function (player) {
         if (null === player.id) { 
-            player.id = this.player_last_id++; 
+            while (this.players[++this.player_last_id]);
+            player.id = this.player_last_id; 
         }
         player.world = this;
         this.players[player.id] = player;
@@ -64,6 +67,7 @@ WebTrek.Game.World = Class.extend({
 
     removePlayer: function (player_id) {
         var player = this.players[player_id];
+        if (!player) { return; }
         this.hub.publish('removePlayer', player);
         delete this.players[player_id];
     },
@@ -81,13 +85,12 @@ WebTrek.Game.World = Class.extend({
     },
 
     /** Prepare a network-ready snapshot of the world */
-    serialize: function () {
+    buildSnapshot: function () {
 
         var entities_out = [],
             w_entities = this.entities;
         for (var id in w_entities) {
-            var entity = w_entities[id];
-            entities_out.push(entity.serialize());
+            entities_out.push(w_entities[id].serialize());
         }
 
         return {
@@ -98,23 +101,14 @@ WebTrek.Game.World = Class.extend({
             
     },
 
-    /** Accept a snapshot of the world and update */
-    deserialize: function (data) {
-    },
-
-    addSerializedEntities: function (serialized) {
-        for (var i=0, obj; obj=serialized[i]; i++) {
-            this.deserializeEntity(obj);
+    /** Update this world from a prepared snapshot */
+    updateFromSnapshot: function (snapshot) {
+        this.options.width = snapshot.width;
+        this.options.height = snapshot.height;
+        var s_entities = snapshot.entities;
+        for (var i=0,s; s=s_entities[i]; i++) {
+            this.addEntity(WebTrek.Game.Entity.deserialize(s));
         }
-    },
-
-    deserializeEntity: function (data) {
-        var e_pkg = WebTrek.Game.Entity;
-        if ('undefined' == typeof(data.entity_type)) { return; }
-        if ('undefined' == typeof(e_pkg[data.entity_type])) { return; }
-        data.world = this;
-        var entity = new e_pkg[data.entity_type](data);
-        this.addEntity(entity);
     },
 
     EOF:null

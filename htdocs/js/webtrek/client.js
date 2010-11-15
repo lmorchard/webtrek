@@ -140,10 +140,8 @@ WebTrek.Client = Class.extend(function() {
             }
             var $this = this, 
                 socket = this.socket;
-            socket.on('connect', function () {
-                $this.connected = true;
-                $this.send(OPS.HELLO);
-            });
+            socket.on('connect',
+                _(this.handleConnect).bind(this));
             socket.on('disconnect',
                 _(this.handleDisconnect).bind(this));
             socket.on('message',
@@ -165,46 +163,61 @@ WebTrek.Client = Class.extend(function() {
         },
 
         send: function (op, params) {
-            return this.sendRaw([op, (new Date().getTime()), params]);
+            var now = new Date().getTime();
+            return this.sendRaw([op, now, params]);
+        },
+
+        updateEntities: function (data_set) {
+            for (var i=0, data; data=data_set[i]; i++) {
+                var entity = this.world.entities[data[0]];
+                if (!entity) { continue; }
+                this.updateEntity(entity, data);
+            }
+        },
+
+        updateEntity: function (entity, data) {
+            var action_update = data[2];
+            for (var id in action_update) {
+                entity.action[id] = action_update[id];
+            }
+
+            var state_update = data[1];
+
+            /*
+            if (state_update.position) {
+
+                var x_diff = Math.abs(entity.state.position[0] - 
+                        state_update.position[0]) ,
+                    y_diff = Math.abs(entity.state.position[1] - 
+                        state_update.position[1]);
+
+                if (x_diff > 2 || y_diff > 2) {
+                    entity.state.position = state_update.position;
+                } else if (x_diff > 0.01 || y_diff > 0.01) {
+                    entity.state.position = vmath.vector_add(
+                        entity.state.position, 
+                        vmath.vector_div(
+                            vmath.vector_sub(state_update.position, 
+                                entity.state.position), 
+                            10)
+                        );
+                }
+
+                delete state_update.position;
+            }
+            */
+
+            for (var id in state_update) {
+                entity.state[id] = state_update[id];
+            }
         },
 
         handleConnect: function () {
+            this.connected = true;
+            this.send(OPS.HELLO);
         },
 
         handleDisconnect: function () {
-        },
-
-        updateEntity: function (data) {
-            var entity = this.world.findEntity(data.id);
-            if (!entity) { 
-                // We're missing an entity, so get a snapshot.
-                this.send(OPS.WANT_SNAPSHOT);
-            } else {
-
-                if (data.position) {
-
-                    var x_diff = Math.abs(entity.position[0] - data.position[0]) ,
-                        y_diff = Math.abs(entity.position[1] - data.position[1]);
-
-                    if (x_diff > 4 || y_diff > 4) {
-                        entity.position = data.position;
-                    } else if (x_diff > 0.01 || y_diff > 0.01) {
-                        entity.position = vmath.vector_add(
-                            entity.position, 
-                            vmath.vector_div(
-                                vmath.vector_sub(data.position, entity.position), 
-                                10
-                            )
-                        );
-                    }
-
-                    delete data.position;
-                }
-
-                for (var name in data) {
-                    entity[name] = data[name];
-                }
-            }
         },
 
         handleMessage: function (msg) {
@@ -228,22 +241,24 @@ WebTrek.Client = Class.extend(function() {
                 },
                 
                 [ OPS.PING, Number ], 
-                function () { $this.send(OPS.PONG); },
+                function () { 
+                    $this.send(OPS.PONG); 
+                },
                 
                 [ OPS.SNAPSHOT, Number, Object ], 
                 function (time, snapshot) { 
                     $this.loop.tick = snapshot.tick;
-                    $this.world.addSerializedEntities(snapshot.world.entities);
+                    $this.world.updateFromSnapshot(snapshot.world);
                 },
 
-                [ OPS.ENTITY_NEW, Number, Object ],
-                function (time, entity_data) {
-                    $this.world.deserializeEntity(entity_data);
+                [ OPS.ENTITY_NEW, Number, Array ],
+                function (time, s) {
+                    $this.world.addEntity(WebTrek.Game.Entity.deserialize(s));
                 },
 
-                [ OPS.ENTITY_UPDATE, Number, Object ],
-                function (time, entity_data) {
-                    $this.updateEntity(entity_data);
+                [ OPS.ENTITY_UPDATE, Number, Array ],
+                function (time, data) {
+                    $this.updateEntities(data);
                 },
 
                 [ OPS.ENTITY_REMOVE, Number, Number ],

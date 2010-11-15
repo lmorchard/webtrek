@@ -29,12 +29,14 @@ module.exports = nodeunit.testCase({
             width: 2000, height: 2000
         });
 
-        var thing = new WebTrek.Game.Entity.MotionBase({
-            position: [ 0, 0 ],
-            velocity: [ 10, 10 ], // Should be pixels/sec
-            max_speed: 50,
-            rotation: 0
-        });
+        var thing = new WebTrek.Game.Entity.MotionBase(
+            { max_speed: 50 },
+            {
+                position: [ 0, 0 ],
+                velocity: [ 10, 10 ], // Should be pixels/sec
+                rotation: 0
+            }
+        );
 
         world.addEntity(thing);
 
@@ -46,15 +48,14 @@ module.exports = nodeunit.testCase({
             world.update(time, delta);
         });
         loop.hub.subscribe('kill', function () {
-            var pos_x = thing.position[0],
-                pos_y = thing.position[1];
+            var pos_x = thing.state.position[0],
+                pos_y = thing.state.position[1];
             test.equal(Math.round(pos_x), 10);
             test.equal(Math.round(pos_y), 10);
             test.done();
         });
 
         loop.start(0, 1000);
-
     },
 
     "Bullets fired at world's edges should be snapped in-bounds": function (test) {
@@ -86,12 +87,12 @@ module.exports = nodeunit.testCase({
             var state = states.shift();
             if (state) {
 
-                avatar.position = state.position;
-                avatar.angle = state.angle;
+                avatar.state.position = state.position;
+                avatar.state.angle = state.angle;
 
                 var bullet = avatar.fireBullet(time, delta),
-                    xpos = bullet.position[0],
-                    ypos = bullet.position[1];
+                    xpos = bullet.state.position[0],
+                    ypos = bullet.state.position[1];
 
                 world.update(time, delta);
 
@@ -115,35 +116,45 @@ module.exports = nodeunit.testCase({
             width: 2000, height: 2000
         });
 
-        var props = {
-            position: [ 123, 456 ],
+        var options = {
             size: [ 100, 50 ],
-            angle: [ 3 ],
             time_to_live: 2000,
-            velocity: [ 12, 34 ],
-            acceleration: 100,
-            rotation: 3,
             max_speed: 500,
             bounce: 1,
             max_bounces: 5,
+        };
+
+        var state = {
+            position: [ 123, 456 ],
+            angle: [ 3 ],
+            velocity: [ 12, 34 ],
+            acceleration: 100,
+            rotation: 3,
             bounces_count: 3
         };
 
         for (var i=0; i<3; i++) {
-            var thing = new WebTrek.Game.Entity.Avatar(_(props).clone());
+            var thing = new WebTrek.Game.Entity.Avatar(
+                _(options).clone(), _(state).clone()
+            );
             world.addEntity(thing);
         }
         for (var i=0; i<3; i++) {
-            var thing = new WebTrek.Game.Entity.Bullet(_(props).clone());
+            var thing = new WebTrek.Game.Entity.Bullet(
+                _(options).clone(), _(state).clone()
+            );
             world.addEntity(thing);
         }
 
         var player = new WebTrek.Game.Player({
-            avatar: new WebTrek.Game.Entity.Avatar({
-                position: [ 400, 400 ],
-                velocity: [ 12, 34 ],
-                angle: [ 2 ],
-            })
+            avatar: new WebTrek.Game.Entity.Avatar(
+                {},
+                {
+                    position: [ 400, 400 ],
+                    velocity: [ 12, 34 ],
+                    angle: [ 2 ],
+                }
+            )
         });
 
         world.addPlayer(player);
@@ -152,31 +163,31 @@ module.exports = nodeunit.testCase({
         player.avatar.fireBullet(0, 15);
 
         var assert_world = function (world) {
-            var objs = _(world.entities).chain()
-                .values().map(function (x) { return x.serialize(); });
+            var objs = _(world.entities).chain().values()
+                .map(function (x) { return x.serialize(); });
 
             // Not doing a comprehensive check of properties, but verify a few.
-            
-            test.deepEqual(objs.pluck('id').value(), [
-                0, 1, 2, 3, 4, 5, 6, 7
-            ]);
 
-            test.deepEqual(objs.pluck('entity_type').value(), [
+            test.deepEqual(objs.pluck(0).value(), [
                 "Avatar","Avatar","Avatar","Bullet","Bullet", "Bullet",
                 "Avatar","Bullet"
             ]);
 
-            test.deepEqual(objs.pluck('owner_id').value(), [
-                undefined,undefined,undefined,null,null,
-                null,undefined,6
+            test.deepEqual(objs.pluck(1).pluck('id').value(),
+                [0,1,2,3,4,5,6,7]);
+
+            test.deepEqual(objs.pluck(1).pluck('owner_id').value(), 
+                [ null,null,null,null,null,null,null,6 ]);
+
+            test.deepEqual(objs.pluck(2).pluck('position').value(), [
+                [123,456],[123,456],[123,456],[123,456],
+                [123,456],[123,456],[400,400],
+                [418.93313855402204,409.066557733774]
             ]);
 
-            test.deepEqual(objs.pluck('max_bounces').value(),
-                [undefined,undefined,undefined,5,5,5,undefined,2]);
-
-            test.deepEqual(objs.pluck('size').value(), [
-                [100,50],[100,50],[100,50],[100,50],[100,50],
-                [100,50],[20,30],[2,2]
+            test.deepEqual(objs.pluck(3).pluck('fire').value(), [
+                false,false,false,undefined,undefined,
+                undefined,false,undefined
             ]);
 
             return objs.value();
@@ -188,14 +199,17 @@ module.exports = nodeunit.testCase({
             width: 2000, height: 2000
         });
 
+        for (var i=0,s; s=serialized[i]; i++) {
+            var entity = WebTrek.Game.Entity.deserialize(s);
+            alt_world.addEntity(entity);
+        }
+
         // HACK: Make sure that the serialized IDs are being used.
         alt_world.entity_last_id = 55;
 
-        alt_world.addSerializedEntities(serialized);
-
         assert_world(alt_world);
 
-        test.done();
+        return test.done();
     }
 
 });

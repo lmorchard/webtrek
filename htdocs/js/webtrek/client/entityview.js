@@ -19,8 +19,8 @@ WebTrek.Client.EntityView.EntityViewBase = Class.extend({
 
     beforeDraw: function (ctx, time, delta, remainder, draw_cb) {
         ctx.save();
-        ctx.rotate(this.entity.angle);
-        ctx.translate( 0-(this.entity.size[0]/2), 0-(this.entity.size[1]/2) );
+        ctx.rotate(this.entity.state.angle);
+        ctx.translate( 0-(this.entity.options.size[0]/2), 0-(this.entity.options.size[1]/2) );
         return this;
     },
 
@@ -41,8 +41,8 @@ WebTrek.Client.EntityView.EntityViewBase = Class.extend({
  */
 WebTrek.Client.EntityView.AvatarView = WebTrek.Client.EntityView.EntityViewBase.extend({
     draw: function (ctx, time, delta, remainder) {
-        var w = this.entity.size[0],
-            h = this.entity.size[1];
+        var w = this.entity.options.size[0],
+            h = this.entity.options.size[1];
 
         ctx.save();
         ctx.fillStyle = 'rgba(255,255,255,0.2)';
@@ -74,7 +74,7 @@ WebTrek.Client.EntityView.BulletView = WebTrek.Client.EntityView.EntityViewBase.
                 ctx.strokeStyle = 'rgba(255,255,255,0.7)';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.arc(0, 0, this.entity.size[0], 0, full_circle, true);
+                ctx.arc(0, 0, this.entity.options.size[0], 0, full_circle, true);
                 ctx.closePath();
                 ctx.stroke();
                 ctx.fill();

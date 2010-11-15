@@ -46,14 +46,19 @@ function main() {
     });
 
     // TODO: Remove this!
-    for (var i=1; i<=5; i++) {
+    for (var i=1; i<=1; i++) {
         game_server.world.addEntity(
-            new WebTrek.Game.Entity.Avatar({
-                position: [ 100 * i, 50 * i ],
-                velocity: [ 10*i , 10*i ],
-                rotation: 1*i,
-                action: { rotate: 1 }
-            })
+            new WebTrek.Game.Entity.Avatar(
+                {},
+                {
+                    position: [ 100 * i, 50 * i ],
+                    velocity: [ 10*i , 10*i ],
+                    rotation: 1*i
+                },
+                { 
+                    rotate: -1
+                }
+            )
         );
     }
 

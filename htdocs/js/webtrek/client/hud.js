@@ -21,7 +21,7 @@ WebTrek.Client.Hud.ElementBase = Class.extend({
 
     hide: function () { this.visible = false; },
     show: function () { this.visible = true; },
-    draw: function (ctx, tick, delta, remainder) { },
+    draw: function (ctx, time, delta, remainder) { },
     onAdd: function (viewport, width, height) {
         this.viewport = viewport;
         this.onResize(width, height);
@@ -43,7 +43,7 @@ WebTrek.Client.Hud.Reticule = WebTrek.Client.Hud.ElementBase.extend({
         this.position = [ width/2, height/2 ];
     },
 
-    draw: function (ctx, tick, delta, remainder) {
+    draw: function (ctx, time, delta, remainder) {
 
         ctx.save();
         ctx.translate(this.position[0], this.position[1]);
@@ -73,8 +73,8 @@ WebTrek.Client.Hud.TextBase = WebTrek.Client.Hud.ElementBase.extend({
         }, options));
     },
     
-    draw: function (ctx, tick, delta, remainder) {
-        var text = this.updateText(tick, delta, remainder);
+    draw: function (ctx, time, delta, remainder) {
+        var text = this.updateText(time, delta, remainder);
         
         ctx.save();
         ctx.translate(this.position[0], this.position[1]);
@@ -96,21 +96,21 @@ WebTrek.Client.Hud.FPS = WebTrek.Client.Hud.TextBase.extend({
 
     init: function (options) {
         this._super(options);
-        this.last_tick = 0;
+        this.last_time = 0;
         this.last_count = 0;
         this.fps = 0;
         this.avg_fps = 0;
     },
 
-    updateText: function (tick, delta, remainder) {
+    updateText: function (time, delta, remainder) {
         var fps = 0;
-        if ((tick-this.last_tick) > this.update_period) {
+        if ((time-this.last_time) > this.update_period) {
             this.fps = parseInt(
                 ( this.viewport.stats.frame_count - this.last_count ) /
-                ( ( tick - this.last_tick ) / 1000 ) , 10);
+                ( ( time - this.last_time ) / 1000 ) , 10);
             this.avg_fps = 
-                parseInt(this.viewport.stats.frame_count / ( tick / 1000 ))
-            this.last_tick = tick;
+                parseInt(this.viewport.stats.frame_count / ( time / 1000 ))
+            this.last_time = time;
             this.last_count = this.viewport.stats.frame_count;
         }
         var text = _.template(
@@ -135,7 +135,7 @@ WebTrek.Client.Hud.Netstat = WebTrek.Client.Hud.TextBase.extend({
 
         this.stats = this.options.stats;
         this.last_stats = _.clone(this.options.stats);
-        this.last_tick = 0;
+        this.last_time = 0;
         this.sum_latency = 0
         this.count_latency = 0;
         this.text = 'NET:';
@@ -149,8 +149,8 @@ WebTrek.Client.Hud.Netstat = WebTrek.Client.Hud.TextBase.extend({
         return Math.round( stat.bytes / stat.messages );
     },
     
-    updateText: function (tick, delta, remainder) {
-        if ( (tick-this.last_tick) < this.options.update_period ) {
+    updateText: function (time, delta, remainder) {
+        if ( (time-this.last_time) < this.options.update_period ) {
 
             this.sum_latency += this.stats.t_in.latency;
             this.count_latency++;
@@ -162,11 +162,11 @@ WebTrek.Client.Hud.Netstat = WebTrek.Client.Hud.TextBase.extend({
                 latency     = this.stats.t_in.latency,
                 avg_latency = Math.round( this.sum_latency / this.count_latency );
 
-            this.text = 'NET: Rate = ' + in_rate + ' in / ' + out_rate + ' out; Latency = ' + avg_latency + ' avg / ' + latency + ' now';
+            this.text = 'NET: ' + this.stats.t_in.messages + ' Rate = ' + in_rate + ' in / ' + out_rate + ' out; Latency = ' + avg_latency + ' avg / ' + latency + ' now';
 
             this.sum_latency = 0;
             this.count_latency = 0;
-            this.last_tick = tick;
+            this.last_time = time;
             this.last_stats = _.clone(this.stats);
 
         }

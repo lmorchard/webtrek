@@ -22,8 +22,8 @@ WebTrek.Client = Class.extend(function() {
 
             this.stats = {
                 net: {
-                    in:  { messages: 0, bytes: 0, last: null },
-                    out: { messages: 0, bytes: 0, last: null },
+                    t_in:  { messages: 0, bytes: 0, last: null },
+                    t_out: { messages: 0, bytes: 0, last: null }
                 }
             };
 
@@ -156,9 +156,9 @@ WebTrek.Client = Class.extend(function() {
             var msg = JSON.stringify(data),
                 now = new Date().getTime();
 
-            this.stats.net.out.last = now;
-            this.stats.net.out.messages++;
-            this.stats.net.out.bytes += msg.length;
+            this.stats.net.t_out.last = now;
+            this.stats.net.t_out.messages++;
+            this.stats.net.t_out.bytes += msg.length;
 
             this.socket.send(msg);
             return this;
@@ -212,10 +212,10 @@ WebTrek.Client = Class.extend(function() {
                 data = JSON.parse(msg),
                 now = new Date().getTime();
 
-            this.stats.net.in.last = now;
-            this.stats.net.in.messages++;
-            this.stats.net.in.bytes += msg.length;
-            this.stats.net.in.latency = now - data[1];
+            this.stats.net.t_in.last = now;
+            this.stats.net.t_in.messages++;
+            this.stats.net.t_in.bytes += msg.length;
+            this.stats.net.t_in.latency = now - data[1];
                 
             match(
                 

@@ -152,14 +152,14 @@ WebTrek.Client.Hud.Netstat = WebTrek.Client.Hud.TextBase.extend({
     updateText: function (tick, delta, remainder) {
         if ( (tick-this.last_tick) < this.options.update_period ) {
 
-            this.sum_latency += this.stats.in.latency;
+            this.sum_latency += this.stats.t_in.latency;
             this.count_latency++;
         
         } else {
 
-            var in_rate     = this.calcRate(this.stats.in),
-                out_rate    = this.calcRate(this.stats.out),
-                latency     = this.stats.in.latency,
+            var in_rate     = this.calcRate(this.stats.t_in),
+                out_rate    = this.calcRate(this.stats.t_out),
+                latency     = this.stats.t_in.latency,
                 avg_latency = Math.round( this.sum_latency / this.count_latency );
 
             this.text = 'NET: Rate = ' + in_rate + ' in / ' + out_rate + ' out; Latency = ' + avg_latency + ' avg / ' + latency + ' now';

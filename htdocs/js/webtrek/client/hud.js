@@ -48,11 +48,9 @@ WebTrek.Client.Hud.Reticule = WebTrek.Client.Hud.ElementBase.extend({
         ctx.save();
         ctx.translate(this.position[0], this.position[1]);
 
-        ctx.strokeStyle = 'rgba(0,255,0,0.1)';
+        ctx.strokeStyle = 'rgba(0,192,0,0.3)';
         ctx.lineWidth = 4;
         this.viewport.circle(0, 0, 75);
-        ctx.stroke();
-        this.viewport.circle(0, 0, 2);
         ctx.stroke();
 
         ctx.restore();

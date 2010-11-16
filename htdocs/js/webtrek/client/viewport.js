@@ -20,12 +20,12 @@ WebTrek.Client.Viewport = Class.extend(function () {
                 camera_center: [ 1200, 1200 ],
                 hud_elements: {},
 
-                draw_backdrop_image: true,
+                draw_backdrop_image: false,
 
                 grid_cell_size: 150,
-                grid_line_width: 1,
-                grid_line_color: 'rgba(192,192,192,0.4)',
-                grid_cell_color: 'rgba(0, 0, 0, 0.6)',
+                grid_line_width: 1.5,
+                grid_line_color: 'rgba(64, 64, 64, 0.5)',
+                grid_cell_color: 'rgba(0, 0, 0, 0.5)',
                 background_wipe: "rgba(0, 0, 0, 1.0)",
                 // To see trails:
                 // background_wipe: "rgba(0, 0, 0, 0.2)",

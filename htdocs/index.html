@@ -7,12 +7,16 @@
     </head>
     <body>
 
-        <div id="loading">
-            <h1>Loading...</h1>
-        </div>
+        <form id="controls">
+            <fieldset><ul>
+                <li>
+                    <input type="checkbox" id="show_backdrop_image" />
+                    <label for="show_backdrop_image">Fancy space backdrop?</label>
+                </li>
+            </ul></fieldset>
+        </form>
 
         <canvas id="display" width="640" height="480"></canvas>
-        <div id="fps"></div>
         <form><textarea id="console"></textarea></form>
 
         <!-- http://www.eso.org/public/outreach/copyright.html -->
@@ -63,14 +67,24 @@
         <script type="text/javascript" src="js/webtrek/game/entity.js"></script>
         <script type="text/javascript" src="js/webtrek/game/player.js"></script>
 
+        <div id="loading">
+            <h1>Loading...</h1>
+        </div>
 
         <script type="text/javascript">
-            //$(document).ready(function () {
             $(window).load(function () {
-                $('#loading').hide();
+
+                $('body').addClass('loaded');
+                
                 window.client = new WebTrek.Client({ 
                     document: document
                 }).start();
+
+                $('#show_backdrop_image').change(function (ev) {
+                    client.viewport.options.draw_backdrop_image =
+                        $(this).attr('checked');
+                });
+
             });
         </script>
 

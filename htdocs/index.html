@@ -7,9 +7,34 @@
     </head>
     <body>
 
+        <div id="loading">
+            <h1>Loading...</h1>
+        </div>
+
         <canvas id="display" width="640" height="480"></canvas>
         <div id="fps"></div>
         <form><textarea id="console"></textarea></form>
+
+        <!-- http://www.eso.org/public/outreach/copyright.html -->
+
+        <img id="backdrop_image"
+            src="http://www.eso.org/public/archives/images/wallpaper1/trapeziumdk15b.jpg" />
+
+        <!--
+        <img id="backdrop_image"
+            src="http://www.eso.org/public/archives/images/wallpaper1/eso-flame.jpg" />
+        <img id="backdrop_image"
+            src="http://www.eso.org/public/archives/images/wallpaper1/potw1026a.jpg" />
+        <img id="backdrop_image"
+            src="http://www.eso.org/public/archives/images/wallpaper1/potw1044a.jpg" />
+
+        <img id="backdrop_image"
+            src="http://www.eso.org/public/archives/images/wallpaper2/potw1046a.jpg" />
+        <img id="backdrop_image"
+            src="http://www.eso.org/public/archives/images/wallpaper1/potw1022a.jpg" />
+        <img id="backdrop_image"
+            src="http://www.eso.org/public/archives/images/wallpaper3/potw1037a.jpg" />
+        -->
 
         <script type="text/javascript" src="js/socket.io.client.js"></script>
         <script type="text/javascript">
@@ -40,7 +65,9 @@
 
 
         <script type="text/javascript">
-            $(document).ready(function () {
+            //$(document).ready(function () {
+            $(window).load(function () {
+                $('#loading').hide();
                 window.client = new WebTrek.Client({ 
                     document: document
                 }).start();

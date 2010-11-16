@@ -17,15 +17,18 @@ WebTrek.Client.Viewport = Class.extend(function () {
                 width: 640,
                 height: 480,
 
-                camera_center: [ 1000, 1000 ],
+                camera_center: [ 1200, 1200 ],
                 hud_elements: {},
 
-                grid_cell_size: 100,
-                grid_line_width: 2,
-                grid_cell_color: 'rgba(32,32,32,1.0)',
+                draw_backdrop_image: true,
+
+                grid_cell_size: 150,
+                grid_line_width: 1,
+                grid_line_color: 'rgba(192,192,192,0.4)',
+                grid_cell_color: 'rgba(0, 0, 0, 0.6)',
                 background_wipe: "rgba(0, 0, 0, 1.0)",
                 // To see trails:
-                // background_wipe: "rgba(0, 0, 0, 0.3)",
+                // background_wipe: "rgba(0, 0, 0, 0.2)",
 
                 canvas: null,
                 fullscreen: true,
@@ -71,11 +74,11 @@ WebTrek.Client.Viewport = Class.extend(function () {
     setCameraCenter: function (pos) {
 
         var camx = pos[0],
-        camy = pos[1],
-        camw = this.canvas.width,
-        camw2 = camw/2,
-        camh = this.canvas.height,
-        camh2 = camh/2;
+            camy = pos[1],
+            camw = this.canvas.width,
+            camw2 = camw/2,
+            camh = this.canvas.height,
+            camh2 = camh/2;
 
         this.camera = { 
             center: [ camx, camy ],
@@ -141,8 +144,7 @@ WebTrek.Client.Viewport = Class.extend(function () {
 
     wipe: function (tick, delta, remainder) {
         this.ctx.save();
-        this.ctx.fillStyle = this.options.background_wipe;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.restore();      
     },
 
@@ -199,15 +201,17 @@ WebTrek.Client.Viewport = Class.extend(function () {
             var worldw = this.world.options.width;
             var worldh = this.world.options.height;
 
+            ctx.save();
+
+            ctx.fillStyle = this.options.grid_cell_color;
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
             var cell_size = this.options.grid_cell_size;
-            var cell_color = this.options.grid_cell_color;
 
             var x, y;
 
-            ctx.save();
-
-            ctx.fillStyle = 'black';
-            ctx.strokeStyle = this.options.grid_cell_color;
+            ctx.fillStyle = this.options.grid_cell_color;
+            ctx.strokeStyle = this.options.grid_line_color;
             ctx.lineWidth = this.options.grid_line_width;
 
             ctx.beginPath();
@@ -231,22 +235,47 @@ WebTrek.Client.Viewport = Class.extend(function () {
 
             // Left Edge
             if (vp_left < 0) {
-                ctx.fillRect(0, 0, -vp_left, camh);
+                ctx.clearRect(0, 0, -vp_left, camh);
             }
 
             // Top Edge
             if (vp_top < 0) {
-                ctx.fillRect(0, 0, camw, -vp_top);
+                ctx.clearRect(0, 0, camw, -vp_top);
             }
 
             // Right Edge
             if (vp_right > worldw) {
-                ctx.fillRect(camw - (vp_right - worldw), 0, camw, camh);
+                ctx.clearRect(camw - (vp_right - worldw), 0, camw, camh);
             }
 
             // Bottom Edge
             if (vp_bottom > worldh) {
-                ctx.fillRect(0, camh - (vp_bottom - worldh), camw, camh);
+                ctx.clearRect(0, camh - (vp_bottom - worldh), camw, camh);
+            }
+
+            if (this.options.draw_backdrop_image) {
+                ctx.globalCompositeOperation = 'destination-over';
+                var backdrop_image = $('#backdrop_image')[0];
+
+                var vw = worldw + camw,
+                    vh = worldh + camh,
+                    scale = 0;
+
+                if (backdrop_image.width < backdrop_image.height) {
+                    scale = backdrop_image.width / vw;
+                } else {
+                    scale = backdrop_image.height / vh;
+                }
+
+                var bx = ( vp_left + (camw/2) ) * scale * 0.5,
+                    by = ( vp_top + (camh/2) ) * scale * 0.5,
+                    bw = camw * scale * 2,
+                    bh = camh * scale * 2;
+
+                ctx.drawImage(backdrop_image, 
+                    bx, by, bw, bh,
+                    0, 0, camw, camh
+                );
             }
 
             ctx.restore();

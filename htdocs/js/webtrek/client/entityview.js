@@ -45,8 +45,8 @@ WebTrek.Client.EntityView.AvatarView = WebTrek.Client.EntityView.EntityViewBase.
             h = this.entity.options.size[1];
 
         ctx.save();
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(w/2, 0);

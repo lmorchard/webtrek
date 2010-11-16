@@ -233,23 +233,20 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
 
         this._super(time, delta);
 
-        if (a.fire && ((time-this.last_fired) >= this.options.reload_delay)) {
-            this.last_fired = time;
-            this.fireBullet(time, delta);
+        // Only the server gets to fire real bullets.
+        if (this.world.isServer()) {
+            if (a.fire && ((time-this.last_fired) >= this.options.reload_delay)) {
+                this.last_fired = time;
+                this.fireBullet(time, delta);
+            }
         }
 
     },
 
     fireBullet: function (time, delta) {
-        // Only the server gets to fire real bullets.
-        if (!this.world.options.is_server) { return; }
-
         var new_bullet = new WebTrek.Game.Entity.Bullet();
-
         new_bullet.launchFromOwner(this);
-
         this.world.addEntity(new_bullet);
-        new_bullet.update(time, delta);
         
         return new_bullet;
     }

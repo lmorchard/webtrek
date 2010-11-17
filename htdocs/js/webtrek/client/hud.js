@@ -128,14 +128,14 @@ WebTrek.Client.Hud.Netstat = WebTrek.Client.Hud.TextBase.extend({
         this._super(_.extend({
             color: 'rgb(255,0,0)',
             stats: null,
-            update_period: 150
+            update_period: 250,
+            max_lag_count: 20
         }, options));
 
         this.stats = this.options.stats;
-        this.last_stats = _.clone(this.options.stats);
         this.last_time = 0;
-        this.sum_latency = 0
-        this.count_latency = 0;
+        this.sum_lag = 0
+        this.count_lag = 0;
         this.text = 'NET:';
     },
 
@@ -148,26 +148,31 @@ WebTrek.Client.Hud.Netstat = WebTrek.Client.Hud.TextBase.extend({
     },
     
     updateText: function (time, delta, remainder) {
-        if ( (time-this.last_time) < this.options.update_period ) {
 
-            this.sum_latency += this.stats.t_in.latency;
-            this.count_latency++;
-        
-        } else {
-
-            var in_rate     = this.calcRate(this.stats.t_in),
-                out_rate    = this.calcRate(this.stats.t_out),
-                latency     = this.stats.t_in.latency,
-                avg_latency = Math.round( this.sum_latency / this.count_latency );
-
-            this.text = 'NET: ' + this.stats.t_in.messages + ' Rate = ' + in_rate + ' in / ' + out_rate + ' out; Latency = ' + avg_latency + ' avg / ' + latency + ' now';
-
-            this.sum_latency = 0;
-            this.count_latency = 0;
+        if ( (time-this.last_time) > this.options.update_period ) {
+            
             this.last_time = time;
-            this.last_stats = _.clone(this.stats);
 
+            var in_rate  = this.calcRate(this.stats.t_in),
+                out_rate = this.calcRate(this.stats.t_out),
+                lag      = this.stats.ping.latency;
+
+            this.count_lag++;
+            this.sum_lag += lag;
+
+            var avg_lag  = Math.round( this.sum_lag / this.count_lag ); 
+
+            this.text = 'NET: ' + this.stats.t_in.messages + ';' + 
+                ' Bytes = ' + in_rate + ' in / ' + out_rate + ' out;' + 
+                ' Ping = ' + avg_lag + ' avg / ' + lag + ' curr' + 
+                ' Tick = ' + this.stats.remote_tick + ' / ' + time + " / " + (time - this.stats.remote_tick);
         }
+
+        if (this.count_lag > this.options.max_lag_count) {
+            this.sum_lag = 0;
+            this.count_lag = 0;
+        }
+
         return this.text;
     }
 

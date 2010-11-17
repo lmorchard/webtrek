@@ -15,6 +15,7 @@ WebTrek.Client = Class.extend(function() {
                 document: null,
                 socket: null,
                 debug: true,
+                ping_period: 500,
                 world_size: [ 1500, 1500 ]
             }, options);
 
@@ -22,10 +23,12 @@ WebTrek.Client = Class.extend(function() {
 
             this.stats = {
                 net: {
+                    ping:  { last_time: 0, last_response: 0, latency: 0 },
                     t_in:  { messages: 0, bytes: 0, last: null },
                     t_out: { messages: 0, bytes: 0, last: null }
                 }
             };
+            this.last_ping_time = (new Date()).getTime();
 
             this.hub = new WebTrek.Utils.PubSub();
             this.socket = this.options.socket;
@@ -100,14 +103,25 @@ WebTrek.Client = Class.extend(function() {
             }
 
             $this.loop = new WebTrek.Game.Loop();
+            
             $this.loop.hub.subscribe('tick', function (time, delta) {
                 $this.world.update(time, delta);
             });
+
             $this.loop.hub.subscribe('done', function (time, delta, remainder) {
+            
                 if ($this.viewport) {
                     $this.viewport.update(time, delta, remainder);
                 }
+
+                var now = (new Date()).getTime();
+                if (now - $this.stats.net.ping.last_time > $this.options.ping_period) {
+                    $this.send(OPS.PING);
+                    $this.stats.net.ping.last_time = now;
+                }
+
             });
+
         },
 
         setWorld: function (world) {
@@ -147,6 +161,7 @@ WebTrek.Client = Class.extend(function() {
             socket.on('message',
                 _(this.handleMessage).bind(this));
             socket.connect();
+            this.connected = true;
             return socket;
         },
 
@@ -154,11 +169,12 @@ WebTrek.Client = Class.extend(function() {
             var msg = JSON.stringify(data),
                 now = new Date().getTime();
 
+            this.socket.send(msg);
+
             this.stats.net.t_out.last = now;
             this.stats.net.t_out.messages++;
             this.stats.net.t_out.bytes += msg.length;
 
-            this.socket.send(msg);
             return this;
         },
 
@@ -242,7 +258,16 @@ WebTrek.Client = Class.extend(function() {
                 
                 [ OPS.PING, Number ], 
                 function () { 
-                    $this.send(OPS.PONG); 
+                    $this.send(OPS.PONG, $this.loop.tick); 
+                },
+
+                [ OPS.PONG, Number, Number ], 
+                function (time, s_tick) { 
+                    var now = (new Date()).getTime();
+                    $this.stats.net.ping.last_response = now;
+                    $this.stats.net.ping.latency =
+                        now - $this.stats.net.ping.last_time;
+                    $this.stats.net.remote_tick = s_tick;
                 },
                 
                 [ OPS.SNAPSHOT, Number, Object ], 

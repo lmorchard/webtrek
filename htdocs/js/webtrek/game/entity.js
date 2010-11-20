@@ -331,10 +331,8 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
     update: function (time, delta) {
         var a = this.action;
 
-        /*
         this.state.rotation = a.rotate * 
             ( this.options.rotation_per_second / 1000 );
-            */
 
         var accel;
         if (a.thrust > 0) { 

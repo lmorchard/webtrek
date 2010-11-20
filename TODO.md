@@ -3,10 +3,7 @@
 ## Soon
 
 * Collision detection!!!
-* Require ping/pong between server/client at least every 2000ms
 * Radar panel in HUD
-* Track net stats, count bytes / messages / etc in server
-    * HUD element showing readout
 * Retroactive time adjustment for events to smooth things out
     * Stutter turning issue
 * Combine messages into single periodic packets

@@ -12,7 +12,7 @@ WebTrek.Game.Loop = Class.extend({
             until: null,
             interval_delay: 10,
             tick_duration: 17,
-            max_delta: 250
+            max_delta: 3000
         }, options);
 
         this.hub = new WebTrek.Utils.PubSub();
@@ -21,6 +21,9 @@ WebTrek.Game.Loop = Class.extend({
         
         this._timer = null;
         this._kill = false;
+
+        this.accum = 0;
+        this.tm_curr = new Date().getTime();
     },
 
     start: function (tick, until) {

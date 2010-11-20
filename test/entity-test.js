@@ -116,32 +116,43 @@ module.exports = nodeunit.testCase({
             width: 2000, height: 2000
         });
 
-        var options = {
-            size: [ 100, 50 ],
-            time_to_live: 2000,
-            max_speed: 500,
-            bounce: 1,
-            max_bounces: 5,
-        };
-
-        var state = {
-            position: [ 123, 456 ],
-            angle: [ 3 ],
-            velocity: [ 12, 34 ],
-            acceleration: 100,
-            rotation: 3,
-            bounces_count: 3
-        };
-
         for (var i=0; i<3; i++) {
             var thing = new WebTrek.Game.Entity.Avatar(
-                _(options).clone(), _(state).clone()
+                {
+                    size: [ 100, 50 ],
+                    time_to_live: 2000,
+                    max_speed: 500,
+                    bounce: 1,
+                    max_bounces: 5,
+                },
+                {
+                    position: [ 123, 456 ],
+                    angle: [ 3 ],
+                    velocity: [ 12, 34 ],
+                    acceleration: 100,
+                    rotation: 3,
+                    bounces_count: 3
+                }
             );
             world.addEntity(thing);
         }
         for (var i=0; i<3; i++) {
             var thing = new WebTrek.Game.Entity.Bullet(
-                _(options).clone(), _(state).clone()
+                {
+                    size: [ 100, 50 ],
+                    time_to_live: 2000,
+                    max_speed: 500,
+                    bounce: 1,
+                    max_bounces: 5,
+                },
+                {
+                    position: [ 123, 456 ],
+                    angle: [ 3 ],
+                    velocity: [ 12, 34 ],
+                    acceleration: 100,
+                    rotation: 3,
+                    bounces_count: 3
+                }
             );
             world.addEntity(thing);
         }
@@ -182,7 +193,7 @@ module.exports = nodeunit.testCase({
             test.deepEqual(objs.pluck(2).pluck('position').value(), [
                 [123,456],[123,456],[123,456],[123,456],
                 [123,456],[123,456],[400,400],
-                [418.93313855402204,409.066557733774]
+                [ 413.6394614023852, 406.24220254820716 ]
             ]);
 
             test.deepEqual(objs.pluck(3).pluck('fire').value(), [
@@ -208,6 +219,63 @@ module.exports = nodeunit.testCase({
         alt_world.entity_last_id = 55;
 
         assert_world(alt_world);
+
+        return test.done();
+    },
+
+    "Exercise client rewind/replay on server update from the past": function (test) {
+
+        var s_world = new WebTrek.Game.World({
+            width: 2000, height: 2000
+        });
+        var s_thing = new WebTrek.Game.Entity.Bullet( { }, {
+            position: [ 100, 100 ], velocity: [ 10, 0 ],
+            max_moves: 200
+        });
+        s_world.addEntity(s_thing);
+
+        var c_world = new WebTrek.Game.World({
+            width: 2000, height: 2000
+        });
+        var c_thing = new WebTrek.Game.Entity.Bullet( { }, {
+            position: [ 100, 100 ], velocity: [ 10, 0 ],
+            max_moves: 200
+        });
+        c_world.addEntity(c_thing);
+
+        var tick_duration = 10, c_tick = 0, s_tick = 0;
+
+        // Move client and server through world together.
+        for (var i=0; i<100; i++) {
+            c_thing.performUpdate(c_tick, tick_duration);
+            c_tick += tick_duration;
+            
+            s_thing.performUpdate(s_tick, tick_duration);
+            s_tick += tick_duration;
+        }
+
+        // Both should be in sync.
+        test.deepEqual(c_thing.state.position, s_thing.state.position);
+
+        // Run client ahead a bit.
+        for (var i=0; i<100; i++) {
+            c_thing.performUpdate(c_tick, tick_duration);
+            c_tick += tick_duration;
+        }
+
+        // Meanwhile, server changes velocity and informs client.
+        s_thing.state.velocity = [ 20, 20 ];
+        c_thing.applyRemoteUpdate(s_tick, s_thing.produceRemoteUpdate());
+
+        // Run server to catch up to client.
+        for (var i=0; i<100; i++) {
+            s_thing.performUpdate(s_tick, tick_duration);
+            s_tick += tick_duration;
+        }
+
+        // Both should still be in sync, despite client having run ahead with
+        // different velocity.
+        test.deepEqual(c_thing.state.position, s_thing.state.position);
 
         return test.done();
     }

@@ -24,7 +24,7 @@ WebTrek.Client.Viewport = Class.extend(function () {
 
                 grid_cell_size: 150,
                 grid_line_width: 1.5,
-                grid_line_color: 'rgba(64, 64, 64, 0.5)',
+                grid_line_color: 'rgba(128, 128, 128, 0.5)',
                 grid_cell_color: 'rgba(0, 0, 0, 0.5)',
                 background_wipe: "rgba(0, 0, 0, 1.0)",
                 // To see trails:
@@ -60,63 +60,48 @@ WebTrek.Client.Viewport = Class.extend(function () {
 
             this.hud_elements = {};
             for (var id in this.options.hud_elements) {
-            this.addHudElement(id, this.options.hud_elements[id]);
-        }
+                this.addHudElement(id, this.options.hud_elements[id]);
+            }
 
-    },
+        },
 
-    addHudElement: function (id, element) {
-        element.viewport = this;
-        this.hud_elements[id] = element;
-        element.onAdd(this, this.canvas.width, this.canvas.height);
-    },
+        addHudElement: function (id, element) {
+            element.viewport = this;
+            this.hud_elements[id] = element;
+            element.onAdd(this, this.canvas.width, this.canvas.height);
+        },
 
-    setCameraCenter: function (pos) {
+        setCameraCenter: function (pos) {
 
-        var camx = pos[0],
-            camy = pos[1],
-            camw = this.canvas.width,
-            camw2 = camw/2,
-            camh = this.canvas.height,
-            camh2 = camh/2;
+            var camx = pos[0],
+                camy = pos[1],
+                camw = this.canvas.width,
+                camw2 = camw/2,
+                camh = this.canvas.height,
+                camh2 = camh/2;
 
-        this.camera = { 
-            center: [ camx, camy ],
-            lt:     [ camx-camw2, camy-camh2 ],
-            rb:     [ camx+camw2, camy+camh2 ],
-            size:   [ camw, camh ],
-            scale: 1
-        };
+            this.camera = { 
+                center: [ camx, camy ],
+                lt:     [ camx-camw2, camy-camh2 ],
+                rb:     [ camx+camw2, camy+camh2 ],
+                size:   [ camw, camh ],
+                scale: 1
+            };
 
-    },
+        },
 
-    startTracking: function (entity) {
-        this.tracking = entity;
-    },
+        startTracking: function (entity) {
+            this.tracking = entity;
+        },
 
-    stopTracking: function (entity) {
-        this.tracking = null;
-    },
+        stopTracking: function (entity) {
+            this.tracking = null;
+        },
 
-    initNonFullscreen: function () {
-        var $this = this;
-        $this.canvas.width = 640;
-        $this.canvas.height = 480;
-
-        $this.setCameraCenter($this.camera.center);
-
-        var hud_elements = $this.hud_elements;
-        for (var id in hud_elements) {
-            hud_elements[id].onResize($this.canvas.width, $this.canvas.height);
-        }
-    },
-
-    initFullscreen: function (fs_callback) {
-        var $this = this;
-        window.onresize = function() {
-            $this.canvas.width = window.innerWidth || 
-            document.documentElement.clientWidth;
-            $this.canvas.height = document.documentElement.clientHeight;
+        initNonFullscreen: function () {
+            var $this = this;
+            $this.canvas.width = 640;
+            $this.canvas.height = 480;
 
             $this.setCameraCenter($this.camera.center);
 
@@ -124,46 +109,67 @@ WebTrek.Client.Viewport = Class.extend(function () {
             for (var id in hud_elements) {
                 hud_elements[id].onResize($this.canvas.width, $this.canvas.height);
             }
-        };
-        window.onresize();
-    },
+        },
 
-    update: function (tick, delta, remainder) {
-        this.stats.frame_count++;
+        initFullscreen: function (fs_callback) {
+            var $this = this;
+            window.onresize = function() {
+                $this.canvas.width = window.innerWidth || 
+                document.documentElement.clientWidth;
+                $this.canvas.height = document.documentElement.clientHeight;
 
-        this.wipe(tick, delta, remainder);
+                $this.setCameraCenter($this.camera.center);
 
-        if (this.tracking) {
-            this.setCameraCenter(this.tracking.state.position);
-        }
+                var hud_elements = $this.hud_elements;
+                for (var id in hud_elements) {
+                    hud_elements[id].onResize($this.canvas.width, $this.canvas.height);
+                }
+            };
+            window.onresize();
+        },
 
-        this.draw_backdrop(tick, delta, remainder);
-        this.draw_entities(tick, delta, remainder);
-        this.draw_hud(tick, delta, remainder);
-    },
+        update: function (tick, delta, remainder) {
+            this.stats.frame_count++;
 
-    wipe: function (tick, delta, remainder) {
-        this.ctx.save();
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.restore();      
-    },
+            this.wipe(tick, delta, remainder);
 
-    draw_entities: function (tick, delta, remainder) {
-        var entities = this.world.entities;
-        var ctx = this.ctx;
-        for (var id in entities) { if (entities.hasOwnProperty(id)) {
-            var entity = this.world.entities[id],
-            view = entity.getView();
-            if (view) { 
-                var point = vmath.vector_sub(entity.state.position, this.camera.lt);
-                ctx.save();
-                ctx.translate(point[0], point[1]);
-                view.beforeDraw(ctx, tick, delta, remainder)
-                    .draw(ctx, tick, delta, remainder)
-                    .afterDraw(ctx, tick, delta, remainder); 
-                ctx.restore();
+            if (this.tracking) {
+                this.setCameraCenter(this.tracking.state.position);
             }
-            }}
+
+            this.draw_backdrop(tick, delta, remainder);
+            this.draw_entities(tick, delta, remainder);
+            this.draw_hud(tick, delta, remainder);
+        },
+
+        wipe: function (tick, delta, remainder) {
+            this.ctx.save();
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.restore();      
+        },
+
+        draw_entities: function (tick, delta, remainder) {
+            var entities = this.world.entities;
+            var ctx = this.ctx;
+            for (var id in entities) { 
+                if (entities.hasOwnProperty(id)) {
+                    var entity = this.world.entities[id];
+                    if (entity.updating) { continue; }
+                    
+                    var view = entity.getView();
+                    if (view) { 
+                        var point = vmath.vector_sub(
+                            entity.state.position, this.camera.lt
+                        );
+                        ctx.save();
+                        ctx.translate(point[0], point[1]);
+                        view.beforeDraw(ctx, tick, delta, remainder)
+                            .draw(ctx, tick, delta, remainder)
+                            .afterDraw(ctx, tick, delta, remainder); 
+                        ctx.restore();
+                    }
+                }
+            }
         },
 
         draw_hud: function (tick, delta, remainder) {
@@ -258,8 +264,8 @@ WebTrek.Client.Viewport = Class.extend(function () {
                 var backdrop_image = $('#backdrop_image')[0];
 
                 var vw = worldw + camw,
-                    vh = worldh + camh,
-                    scale = 0;
+                vh = worldh + camh,
+                scale = 0;
 
                 if (backdrop_image.width < backdrop_image.height) {
                     scale = backdrop_image.width / vw;
@@ -268,9 +274,9 @@ WebTrek.Client.Viewport = Class.extend(function () {
                 }
 
                 var bx = ( vp_left + (camw/2) ) * scale * 0.5,
-                    by = ( vp_top + (camh/2) ) * scale * 0.5,
-                    bw = camw * scale * 2,
-                    bh = camh * scale * 2;
+                by = ( vp_top + (camh/2) ) * scale * 0.5,
+                bw = camw * scale * 2,
+                bh = camh * scale * 2;
 
                 ctx.drawImage(backdrop_image, 
                     bx, by, bw, bh,

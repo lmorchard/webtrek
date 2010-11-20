@@ -90,29 +90,46 @@ WebTrek.Client.Hud.TextBase = WebTrek.Client.Hud.ElementBase.extend({
  */
 WebTrek.Client.Hud.FPS = WebTrek.Client.Hud.TextBase.extend({
 
-    update_period: 250,
-
     init: function (options) {
-        this._super(options);
+        this._super(_.extend({
+            update_period: 250,
+            max_samples: 10
+        },options));
+
+        this.samples = [];
+
         this.last_time = 0;
         this.last_count = 0;
+
         this.fps = 0;
         this.avg_fps = 0;
     },
 
     updateText: function (time, delta, remainder) {
-        var fps = 0;
-        if ((time-this.last_time) > this.update_period) {
-            this.fps = parseInt(
+
+        if ((time-this.last_time) > this.options.update_period) {
+
+            var fps = parseInt(
                 ( this.viewport.stats.frame_count - this.last_count ) /
                 ( ( time - this.last_time ) / 1000 ) , 10);
-            this.avg_fps = 
-                parseInt(this.viewport.stats.frame_count / ( time / 1000 ))
+                
             this.last_time = time;
             this.last_count = this.viewport.stats.frame_count;
+
+            this.samples.push(fps);
+            if (this.samples.length > this.options.max_samples) {
+                this.samples.shift();
+            }
+
+            this.fps = fps;
+            this.avg_fps = parseInt(
+                _(this.samples).reduce(function (sum,n) { 
+                    return sum+n; 
+                }, 0) / this.samples.length, 
+            10);
         }
         var text = _.template(
-            'FPS: <%=avg_fps%> avg / <%=fps%> curr', this
+            'FPS: <%=avg_fps%> avg / <%=fps%> median', this
         );
         return text;
     }
@@ -127,16 +144,19 @@ WebTrek.Client.Hud.Netstat = WebTrek.Client.Hud.TextBase.extend({
     init: function (options) {
         this._super(_.extend({
             color: 'rgb(255,0,0)',
-            stats: null,
-            update_period: 250,
+            client: null,
+            update_period: 1000,
             max_lag_count: 20
         }, options));
 
-        this.stats = this.options.stats;
-        this.last_time = 0;
-        this.sum_lag = 0
-        this.count_lag = 0;
+        this.last_update = 0;
+        this.last_stats = _.clone(this.options.client.socket.stats);
         this.text = 'NET:';
+        this.last_bytes_in = 0;
+        this.last_bytes_out = 0;
+
+        this.bytes_in = [];
+        this.bytes_out = [];
     },
 
     onResize: function (width, height) {
@@ -148,29 +168,24 @@ WebTrek.Client.Hud.Netstat = WebTrek.Client.Hud.TextBase.extend({
     },
     
     updateText: function (time, delta, remainder) {
+        var t_delta = time - this.last_update;
+        if ( t_delta > this.options.update_period ) {
 
-        if ( (time-this.last_time) > this.options.update_period ) {
-            
-            this.last_time = time;
+            var client = this.options.client,
+                median_ping = client.pings[parseInt(client.pings.length/2, 10)],
+                avg_ping = WebTrek.Utils.avg(client.pings);
 
-            var in_rate  = this.calcRate(this.stats.t_in),
-                out_rate = this.calcRate(this.stats.t_out),
-                lag      = this.stats.ping.latency;
+                rate_in = ( client.socket.stats.input.bytes - this.last_bytes_in ),
+                rate_out = ( client.socket.stats.output.bytes - this.last_bytes_out );
 
-            this.count_lag++;
-            this.sum_lag += lag;
+            this.text = 'NET: ' +
+                'rate = ' + rate_in + ' in / ' + rate_out + ' out; ' +
+                'ping = ' + median_ping + ' median / ' + avg_ping + ' avg';
 
-            var avg_lag  = Math.round( this.sum_lag / this.count_lag ); 
-
-            this.text = 'NET: ' + this.stats.t_in.messages + ';' + 
-                ' Bytes = ' + in_rate + ' in / ' + out_rate + ' out;' + 
-                ' Ping = ' + avg_lag + ' avg / ' + lag + ' curr' + 
-                ' Tick = ' + this.stats.remote_tick + ' / ' + time + " / " + (time - this.stats.remote_tick);
-        }
-
-        if (this.count_lag > this.options.max_lag_count) {
-            this.sum_lag = 0;
-            this.count_lag = 0;
+            this.last_update = time;
+            this.last_bytes_in = client.socket.stats.input.bytes;
+            this.last_bytes_out = client.socket.stats.output.bytes;
+        
         }
 
         return this.text;
@@ -204,35 +219,6 @@ WebTrek.Client.Hud.InputState = WebTrek.Client.Hud.TextBase.extend({
             out.push(b+': '+this.keyboard.on(b));
         }
         return 'KEYS: ' + out.join('; ');
-    }
-
-});
-
-/**
- * Avatar state tracking
- */
-WebTrek.Client.Hud.AvatarState = WebTrek.Client.Hud.InputState.extend({
-    
-    init: function (options) {
-        this._super(_.extend({
-            color: 'rgb(255,0,0)',
-            avatar: null
-        }, options));
-    },
-
-    onResize: function (width, height) {
-        this.position = [ 10, height-40 ];
-    },
-    
-    updateText: function () {
-        return _.template(
-            'SHIP: '+
-            'act: <%=action.thrust%>, <%=action.rotate%>, <%=action.fire%>'+
-            'angle=<%=Math.round(angle)%>; vel=<%=velocity[0]%>, '+
-            '<%=velocity[1]%>; pos=<%=position[0]%>, <%=position[1]%>; '+
-            '',
-            this.options.avatar
-        );
     }
 
 });

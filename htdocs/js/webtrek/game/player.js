@@ -54,12 +54,30 @@ WebTrek.Game.Player = Class.extend(function () {
             if (k.on('rotate_right')) { action.rotate = 1; }
             if (k.on('fire')) { action.fire = true; }
 
+
+            var new_angle = this.avatar.state.angle;
+            if (0 != action.rotate) {
+                new_angle += action.rotate *
+                    ( this.avatar.options.rotation_per_second / 1000 ) * delta;
+                if (new_angle > Math.PI) new_angle = -Math.PI;
+                else if(new_angle < -Math.PI) new_angle = Math.PI;
+            }
+            /*
+            */
+
             var a_old = JSON.stringify(this.avatar.action),
                 a_new = JSON.stringify(action);
-            if (a_old != a_new) {
-                this.client.send(OPS.PLAYER_ACTION, action);
+            if (a_old != a_new || new_angle != this.avatar.state.angle) {
+                this.avatar.state.angle = new_angle;
+                this.client.send(OPS.PLAYER_ACTION, [
+                    tick, this.avatar.state, action // this.avatar.action
+                ]);
             }
-            this.avatar.setAction(action);
+            
+            //if (this.world.isServer()) {
+                this.avatar.setAction(action);
+            //}
+
         },
 
         destroy: function () {

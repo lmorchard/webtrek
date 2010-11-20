@@ -16,23 +16,25 @@ WebTrek.Client = Class.extend(function() {
                 socket: null,
                 debug: true,
                 ping_period: 500,
+                max_pings: 10,
                 world_size: [ 1500, 1500 ]
             }, options);
 
             var $this = this;
 
-            this.stats = {
-                net: {
-                    ping:  { last_time: 0, last_response: 0, latency: 0 },
-                    t_in:  { messages: 0, bytes: 0, last: null },
-                    t_out: { messages: 0, bytes: 0, last: null }
-                }
-            };
             this.last_ping_time = (new Date()).getTime();
+            this.pings = [];
 
             this.hub = new WebTrek.Utils.PubSub();
-            this.socket = this.options.socket;
             this.connected = false;
+
+            var socket = this.options.socket;
+            if (!socket) {
+                socket = new io.Socket(null, { 
+                    // rememberTransport: false,
+                });
+            }
+            this.socket = new WebTrek.Network.QueuedMessageSocket(socket);
 
             $this.setWorld(
                 new WebTrek.Game.World({
@@ -87,41 +89,33 @@ WebTrek.Client = Class.extend(function() {
 
                 $this.viewport.addHudElement(
                     'netstat',
-                    new WebTrek.Client.Hud.Netstat({
-                        stats: $this.stats.net
-                    })
+                    new WebTrek.Client.Hud.Netstat({ client: $this })
                 );
 
-                /*
-                $this.viewport.addHudElement(
-                    'avatar_state', 
-                    new WebTrek.Client.Hud.AvatarState({ 
-                        avatar: $this.player.avatar
-                    })
-                );
-                */
             }
 
-            $this.loop = new WebTrek.Game.Loop();
-            
-            $this.loop.hub.subscribe('tick', function (time, delta) {
-                $this.world.update(time, delta);
-            });
+            this.loop = new WebTrek.Game.Loop();
+            this.loop.hub.subscribe('tick', 
+                _(this.onLoopTick).bind(this));
+            this.loop.hub.subscribe('done',
+                _(this.onLoopDone).bind(this));
+        },
 
-            $this.loop.hub.subscribe('done', function (time, delta, remainder) {
-            
-                if ($this.viewport) {
-                    $this.viewport.update(time, delta, remainder);
-                }
+        onLoopTick: function (time, delta) {
+            this.handleMessages();
+            this.world.update(time, delta);
+        },
 
-                var now = (new Date()).getTime();
-                if (now - $this.stats.net.ping.last_time > $this.options.ping_period) {
-                    $this.send(OPS.PING);
-                    $this.stats.net.ping.last_time = now;
-                }
-
-            });
-
+        onLoopDone: function (time, delta, remainder) {
+            if (this.viewport) {
+                this.viewport.update(time, delta, remainder);
+            }
+            var now = (new Date()).getTime();
+            if (now - this.last_ping_time > this.options.ping_period) {
+                this.last_ping_time = now;
+                this.send(OPS.PING);
+            }
+            this.socket.flush();
         },
 
         setWorld: function (world) {
@@ -147,84 +141,26 @@ WebTrek.Client = Class.extend(function() {
         },
 
         connect: function (options) {
-            if (!this.socket) {
-                this.socket = new io.Socket(null, { 
-                    // rememberTransport: false,
-                });
-            }
             var $this = this, 
                 socket = this.socket;
-            socket.on('connect',
+            socket.hub.subscribe('connect',
                 _(this.handleConnect).bind(this));
-            socket.on('disconnect',
+            socket.hub.subscribe('disconnect',
                 _(this.handleDisconnect).bind(this));
-            socket.on('message',
-                _(this.handleMessage).bind(this));
             socket.connect();
-            this.connected = true;
             return socket;
-        },
-
-        sendRaw: function (data) {
-            var msg = JSON.stringify(data),
-                now = new Date().getTime();
-
-            this.socket.send(msg);
-
-            this.stats.net.t_out.last = now;
-            this.stats.net.t_out.messages++;
-            this.stats.net.t_out.bytes += msg.length;
-
-            return this;
         },
 
         send: function (op, params) {
             var now = new Date().getTime();
-            return this.sendRaw([op, now, params]);
+            return this.socket.send([op, now, params]);
         },
 
-        updateEntities: function (data_set) {
+        updateEntities: function (tick, data_set) {
             for (var i=0, data; data=data_set[i]; i++) {
                 var entity = this.world.entities[data[0]];
                 if (!entity) { continue; }
-                this.updateEntity(entity, data);
-            }
-        },
-
-        updateEntity: function (entity, data) {
-            var action_update = data[2];
-            for (var id in action_update) {
-                entity.action[id] = action_update[id];
-            }
-
-            var state_update = data[1];
-
-            /*
-            if (state_update.position) {
-
-                var x_diff = Math.abs(entity.state.position[0] - 
-                        state_update.position[0]) ,
-                    y_diff = Math.abs(entity.state.position[1] - 
-                        state_update.position[1]);
-
-                if (x_diff > 2 || y_diff > 2) {
-                    entity.state.position = state_update.position;
-                } else if (x_diff > 0.01 || y_diff > 0.01) {
-                    entity.state.position = vmath.vector_add(
-                        entity.state.position, 
-                        vmath.vector_div(
-                            vmath.vector_sub(state_update.position, 
-                                entity.state.position), 
-                            10)
-                        );
-                }
-
-                delete state_update.position;
-            }
-            */
-
-            for (var id in state_update) {
-                entity.state[id] = state_update[id];
+                entity.applyRemoteUpdate(tick, data);
             }
         },
 
@@ -234,94 +170,96 @@ WebTrek.Client = Class.extend(function() {
         },
 
         handleDisconnect: function () {
+            this.connected = false;
+            this.loop.kill();
+            setTimeout(function () {
+                window.location.reload();
+            }, 1000);
+        },
+
+        handleMessages: function () {
+            var msgs = this.socket.acceptMessages();
+            while (msgs.length) {
+                this.handleMessage(msgs.shift());
+            }
         },
 
         handleMessage: function (msg) {
+
             var $this = this,
-                data = JSON.parse(msg),
-                now = new Date().getTime();
+                now = new Date().getTime(),
+                op = msg[0],
+                msg_time = msg[1],
+                args = msg[2];
 
-            this.stats.net.t_in.last = now;
-            this.stats.net.t_in.messages++;
-            this.stats.net.t_in.bytes += msg.length;
-            this.stats.net.t_in.latency = now - data[1];
+            switch (op) {
+
+                case OPS.HELLO:
+                    this.connected = true;
+                    this.client_id = args.client_id;
+                    this.send(OPS.WANT_SNAPSHOT);
+                    this.send(OPS.WANT_PLAYER_JOIN);
+                    break;
                 
-            match(
-                
-                [ OPS.HELLO, Number, Object ],
-                function (time, args) { 
-                    $this.connected = true;
-                    $this.client_id = args.client_id;
-                    $this.send(OPS.WANT_SNAPSHOT);
-                    $this.send(OPS.WANT_PLAYER_JOIN);
-                },
-                
-                [ OPS.PING, Number ], 
-                function () { 
-                    $this.send(OPS.PONG, $this.loop.tick); 
-                },
+                case OPS.PING:
+                    this.send(OPS.PONG, this.loop.tick); 
+                    break;
 
-                [ OPS.PONG, Number, Number ], 
-                function (time, s_tick) { 
-                    var now = (new Date()).getTime();
-                    $this.stats.net.ping.last_response = now;
-                    $this.stats.net.ping.latency =
-                        now - $this.stats.net.ping.last_time;
-                    $this.stats.net.remote_tick = s_tick;
-                },
-                
-                [ OPS.SNAPSHOT, Number, Object ], 
-                function (time, snapshot) { 
-                    $this.loop.tick = snapshot.tick;
-                    $this.world.updateFromSnapshot(snapshot.world);
-                },
-
-                [ OPS.ENTITY_NEW, Number, Array ],
-                function (time, s) {
-                    $this.world.addEntity(WebTrek.Game.Entity.deserialize(s));
-                },
-
-                [ OPS.ENTITY_UPDATE, Number, Array ],
-                function (time, data) {
-                    $this.updateEntities(data);
-                },
-
-                [ OPS.ENTITY_REMOVE, Number, Number ],
-                function (time, entity_id) {
-                    $this.world.removeEntity(entity_id);
-                },
-
-                [ OPS.PLAYER_NEW, Number, Object ],
-                function (time, player_data) {
-                    player_data.world = $this.world;
-                    var new_player = new WebTrek.Game.Player(player_data);
-                    $this.world.addPlayer(new_player);
-                },
-
-                [ OPS.PLAYER_REMOVE, Number, Number ],
-                function (time, player_id) {
-                    $this.world.removePlayer(player_id);
-                },
-
-                [ OPS.PLAYER_YOU, Number, Number ],
-                function (time, player_id) {
-                    $this.player = $this.world.findPlayer(player_id);
-                    $this.player.client = $this;
-                    $this.player.keyboard = $this.keyboard;
-                    if ($this.viewport) {
-                        $this.viewport.startTracking($this.player.avatar);
+                case OPS.PONG:
+                    var latency = now - this.last_ping_time;
+                    this.pings.push(latency);
+                    if (this.pings.length > this.options.max_pings) {
+                        this.pings.shift();
                     }
-                },
+                    break;
+                
+                case OPS.SNAPSHOT:
+                    this.loop.tick = args.tick;
+                    this.world.updateFromSnapshot(args.world);
+                    break;
 
-                [ OPS.WHAT ],
-                function () {
+                case OPS.ENTITY_NEW:
+                    var entity = WebTrek.Game.Entity.deserialize(args);
+                    this.world.addEntity(entity);
+                    break;
+
+                case OPS.ENTITY_UPDATE:
+                    this.updateEntities(args[0], args[1]);
+                    break;
+
+                case OPS.ENTITY_REMOVE:
+                    this.world.removeEntity(args);
+                    break;
+
+                case OPS.PLAYER_NEW:
+                    args.world = this.world;
+                    var new_player = new WebTrek.Game.Player(args);
+                    this.world.addPlayer(new_player);
+                    break;
+
+                case OPS.PLAYER_REMOVE:
+                    this.world.removePlayer(args);
+                    break;
+
+                case OPS.PLAYER_YOU:
+                    this.player = this.world.findPlayer(args);
+                    this.player.client = this;
+                    this.player.avatar.is_client = true;
+                    this.player.keyboard = this.keyboard;
+                    if (this.viewport) {
+                        this.viewport.startTracking(this.player.avatar);
+                    }
+                    break;
+
+                case OPS.WHAT:
                     // Ignoring, but should do something here.
-                },
+                    break;
 
-                /* default */
-                function () { $this.send(OPS.WHAT); }
+                default:
+                    this.send(OPS.WHAT);
+                    break;
 
-            )(data);
+            }
         },
 
         EOF:null

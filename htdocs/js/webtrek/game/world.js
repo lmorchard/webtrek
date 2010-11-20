@@ -79,7 +79,8 @@ WebTrek.Game.World = Class.extend({
             this.players[id].update(time, delta);
         }
         for (var id in this.entities) {
-            this.entities[id].update(time, delta);
+            var entity = this.entities[id];
+            entity.performUpdate(time, delta);
         }
         this.hub.publish('update', [ time, delta ]);
     },

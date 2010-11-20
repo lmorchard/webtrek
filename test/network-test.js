@@ -35,7 +35,6 @@ module.exports = nodeunit.testCase({
 
     "Initial player join conversation": function (test) {
         var $this = this;
-        return test.done();
 
         var listener = new Mock_Listener();
         var server = new webtrek.Server({ listener: listener });
@@ -110,6 +109,7 @@ module.exports = nodeunit.testCase({
     },
 
     "Basic client to server connection": function (test) {
+        return test.done();
         var $this = this;
 
         var max_tick = 400;

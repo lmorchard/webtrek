@@ -17,6 +17,7 @@ WebTrek.Game.Entity = (function () {
 /**
  * Base class for active game entities
  */
+    var vmath = WebTrek.Math;
 WebTrek.Game.Entity.EntityBase = Class.extend({
 
     entity_type: 'EntityBase',
@@ -34,6 +35,7 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
             created: null,
             time_to_live: false,
             size: [ 10, 10 ],
+            max_moves: 200
         }, options);
         
         this.state = _.extend({
@@ -46,11 +48,19 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
 
         this.world = this.options.world;
         this.created = this.options.created;
+        this.moves = [];
+        this.updating = false;
+        this.is_client = false;
 
     },
 
     serialize: function () {
-        return [ this.entity_type, this.options, this.state, this.action ];
+        return [ 
+            this.entity_type, 
+            _.clone(this.options), 
+            _.clone(this.state), 
+            _.clone(this.action)
+        ];
     },
 
     setState: function (state) {
@@ -73,16 +83,118 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
         }
         return this.view;
     },
+
+    /** Perform a complete update step */
+    performUpdate: function (time, delta) {
+        this.beforeUpdate(time, delta);
+        this.update(time, delta);
+        this.afterUpdate(time, delta);
+    },
+
+    /** Perform preparations before updating */
+    beforeUpdate: function (time, delta) {
+    },
     
     /** Let this entity take a turn updating itself. */
     update: function (time, delta) {
         if (!this.created) { this.created = time; }
-        var age = (time - this.created);
-        if (this.options.time_to_live && age > this.options.time_to_live) {
+        var age = (time - this.created),
+            ttl = this.options.time_to_live;
+        if (ttl && age > ttl) {
             this.destroy();
         }
     },
 
+    /** Save state after updating */
+    afterUpdate: function (time, delta) {
+        this.moves.push([ 
+            time, delta, _.clone(this.state), _.clone(this.action) 
+        ]);
+        if (this.moves.length > this.options.max_moves) {
+            this.moves.shift();
+        }
+    },
+
+    /** Produce a remote update structure for this entity's state */
+    produceRemoteUpdate: function () {
+        return [ this.options.id, this.state, this.action ];
+    },
+
+    /** Apply a remote update structure to this entity for the given tick */
+    applyRemoteUpdate: function (tick, update) {
+
+        var state_update = update[1];
+        if (this.is_client) { delete state_update.angle; }
+
+        /*
+        this.state = _(this.state).extend(state_update);
+        this.action = _(this.action).extend(update[2]);
+        return;
+        */
+
+        this.updating = true;
+
+        // Use saved states to check if this update should be applied
+        // retroactively in the past.
+        var m_idx, move;
+        for (m_idx=this.moves.length-1, move; move=this.moves[m_idx]; m_idx--) {
+            if (tick >= move[0]) { break; }
+        }
+
+        if (!move || m_idx == this.moves.length-1) {
+            // TODO: Do some interpolation in correction
+
+            if (state_update.position) {
+
+                var x_diff = Math.abs(this.state.position[0] - 
+                    state_update.position[0]);
+                var y_diff = Math.abs(this.state.position[1] - 
+                    state_update.position[1]);
+
+                //if (x_diff > 2 || y_diff > 2) {
+                //    this.state.position = state_update.position;
+                //} else if (x_diff > 0.1 || y_diff > 0.1) {
+                    this.state.position = vmath.vector_add(
+                        this.state.position, 
+                        vmath.vector_div(
+                            vmath.vector_sub(
+                                state_update.position, this.state.position
+                            ), 10
+                        )
+                    );
+                //}
+
+                delete state_update.position;
+            }
+
+            // Server update is newer than client, so just apply
+            this.state = _(this.state).extend(state_update);
+            this.action = _(this.action).extend(update[2]);
+
+
+        } else {
+            // Need to rewind/replay to accomodate server correction, so chop
+            // off the set of moves that the client is ahead of the update.
+            var replay = this.moves.splice(m_idx, ( this.moves.length - m_idx ));
+
+            // Discard the first replay move, apply server update.
+            // replay.shift();
+            this.state = _(this.state).extend(update[1]);
+            this.action = _(this.action).extend(update[2]);
+
+            // Replay the moves from this point forward, re-applying actions
+            // but letting the state sort itself out.
+            for (var idx=0, move; move=replay[idx]; idx++) {
+                this.action = _(this.action).extend(move[3]);
+                this.performUpdate(move[0], move[1]);
+            }
+
+        }
+
+        this.updating = false;
+
+    },
+    
     /** Remove this entity from the world. */
     destroy: function () {
         this.world.removeEntity(this.options.id);
@@ -198,11 +310,11 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
     init: function (options, state, action) {
         this._super(
             _.extend({
-                size: [ 15, 20 ],
-                rotation_per_delta: 0.005,
+                size: [ 25, 25 ],
+                rotation_per_second: 3,
                 thrust_accel:  500,
                 reverse_accel: 500,
-                max_speed: 350,
+                max_speed: 250,
                 bounce: 0.8,
                 reload_delay: 250
             }, options),
@@ -219,7 +331,10 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
     update: function (time, delta) {
         var a = this.action;
 
-        this.state.rotation = a.rotate * this.options.rotation_per_delta;
+        /*
+        this.state.rotation = a.rotate * 
+            ( this.options.rotation_per_second / 1000 );
+            */
 
         var accel;
         if (a.thrust > 0) { 
@@ -273,11 +388,11 @@ WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
         this._super(
             _.extend({
                 size: [ 2, 2 ],
-                max_speed: 450,
+                max_speed: 350,
                 acceleration: 0,
                 time_to_live: 5000,
                 bounce: 1,
-                max_bounces: 2,
+                max_bounces: 1,
             },options),
             _.extend({
                 bounce_count: 0

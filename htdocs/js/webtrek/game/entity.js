@@ -17,7 +17,6 @@ WebTrek.Game.Entity = (function () {
 /**
  * Base class for active game entities
  */
-    var vmath = WebTrek.Math;
 WebTrek.Game.Entity.EntityBase = Class.extend({
 
     entity_type: 'EntityBase',
@@ -35,7 +34,8 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
             created: null,
             time_to_live: false,
             size: [ 10, 10 ],
-            max_moves: 200
+            max_moves: 200,
+            network_update_period: 250
         }, options);
         
         this.state = _.extend({
@@ -50,7 +50,10 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
         this.created = this.options.created;
         this.moves = [];
         this.updating = false;
+        this.last_network_update = 0;
         this.is_client = false;
+
+        this.last_collision = 0;
 
     },
 
@@ -61,6 +64,21 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
             _.clone(this.state), 
             _.clone(this.action)
         ];
+    },
+
+    /** Remove this entity from the world. */
+    destroy: function () {
+        this.world.removeEntity(this.options.id);
+    },
+
+    /** Collect position & size into a single object */
+    getBounds: function () {
+        return {
+            x: this.state.position[0],
+            y: this.state.position[1],
+            w: this.options.size[0],
+            h: this.options.size[1]
+        };
     },
 
     setState: function (state) {
@@ -103,6 +121,10 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
         if (ttl && age > ttl) {
             this.destroy();
         }
+
+        if (time - this.last_collision > 250) {
+            this.in_collision = false;
+        }
     },
 
     /** Save state after updating */
@@ -115,6 +137,16 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
         }
     },
 
+    /** Send a periodic remote update with a server */
+    sendRemoteUpdate: function (time, delta, server) {
+        var network_age = time - this.last_network_update;
+        if (network_age >= this.options.network_update_period) {
+            this.last_network_update = time;
+            server.broadcast(WebTrek.Network.OPS.ENTITY_UPDATE, 
+                [ time, this.produceRemoteUpdate() ]);
+        }
+    },
+
     /** Produce a remote update structure for this entity's state */
     produceRemoteUpdate: function () {
         return [ this.options.id, this.state, this.action ];
@@ -124,7 +156,7 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
     applyRemoteUpdate: function (tick, update) {
 
         var state_update = update[1];
-        if (this.is_client) { delete state_update.angle; }
+        // if (this.is_client) { delete state_update.angle; }
 
         /*
         this.state = _(this.state).extend(state_update);
@@ -144,6 +176,16 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
         if (!move || m_idx == this.moves.length-1) {
             // TODO: Do some interpolation in correction
 
+            if (state_update.angle) {
+                if (Math.abs(this.state.angle - state_update.angle) > 2) {
+                    this.state.angle = state_update.angle;
+                } else {
+                    this.state.angle += 0.1 * (this.state.angle - state_update.angle);
+                }
+
+                delete state_update.angle;
+            }
+
             if (state_update.position) {
 
                 var x_diff = Math.abs(this.state.position[0] - 
@@ -151,6 +193,7 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
                 var y_diff = Math.abs(this.state.position[1] - 
                     state_update.position[1]);
 
+                var vmath = WebTrek.Math;
                 //if (x_diff > 2 || y_diff > 2) {
                 //    this.state.position = state_update.position;
                 //} else if (x_diff > 0.1 || y_diff > 0.1) {
@@ -194,12 +237,13 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
         this.updating = false;
 
     },
-    
-    /** Remove this entity from the world. */
-    destroy: function () {
-        this.world.removeEntity(this.options.id);
-    }
 
+    /** Handle a collision */
+    handleCollisionWith: function(time, delta, other_entity) {
+        this.last_collision = time;
+        this.in_collision = true;
+    }
+    
 });
 
 // Export for CommonJS / node.js
@@ -310,10 +354,11 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
     init: function (options, state, action) {
         this._super(
             _.extend({
+                network_update_period: 20,
                 size: [ 25, 25 ],
-                rotation_per_second: 3,
-                thrust_accel:  500,
-                reverse_accel: 500,
+                rotation_per_second: 2.5,
+                thrust_accel:  350,
+                reverse_accel: 350,
                 max_speed: 250,
                 bounce: 0.8,
                 reload_delay: 250
@@ -385,12 +430,13 @@ WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
     init: function (options, state, action) {
         this._super(
             _.extend({
-                size: [ 2, 2 ],
+                network_update_period: 500,
+                size: [ 3, 3 ],
                 max_speed: 350,
                 acceleration: 0,
                 time_to_live: 5000,
                 bounce: 1,
-                max_bounces: 1,
+                max_bounces: 1
             },options),
             _.extend({
                 bounce_count: 0
@@ -431,6 +477,14 @@ WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
         if (++this.state.bounce_count > this.options.max_bounces) {
             this.destroy();
         }
+    },
+
+    /** Handle a collision */
+    handleCollisionWith: function(time, delta, other_entity) {
+        // Ignore collisions with owner.
+        if (other_entity.options.id == this.options.owner_id) { return; }
+
+        this.destroy();
     }
 
 });

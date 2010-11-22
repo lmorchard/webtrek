@@ -156,10 +156,9 @@ WebTrek.Client = Class.extend(function() {
             return this.socket.send([op, now, params]);
         },
 
-        updateEntities: function (tick, data_set) {
-            for (var i=0, data; data=data_set[i]; i++) {
-                var entity = this.world.entities[data[0]];
-                if (!entity) { continue; }
+        updateEntity: function (tick, data) {
+            var entity = this.world.entities[data[0]];
+            if (entity) { 
                 entity.applyRemoteUpdate(tick, data);
             }
         },
@@ -224,7 +223,7 @@ WebTrek.Client = Class.extend(function() {
                     break;
 
                 case OPS.ENTITY_UPDATE:
-                    this.updateEntities(args[0], args[1]);
+                    this.updateEntity(args[0], args[1]);
                     break;
 
                 case OPS.ENTITY_REMOVE:

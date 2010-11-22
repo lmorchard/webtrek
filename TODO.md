@@ -2,15 +2,15 @@
 
 ## Soon
 
+* Rate-adaptive update stream like wpilot
+    * See wpilot/wpilots.js :: post_update and connection.update_rate
+    * Per-entity update frame modulo, see Nodegame-Shooter
+        * Players = 1-2, under non-deterministic control
+        * Bullets = 10, every 10 frames since ballistic
 * Collision detection!!!
 * Radar panel in HUD
 * Retroactive time adjustment for events to smooth things out
     * Stutter turning issue
-* Combine messages into single periodic packets
-    * See flush_queue()
-* Rate-adaptive update stream like wpilot
-    * See wpilot/wpilots.js :: post_update and connection.update_rate
-    * See also conn.flush_queue
 * Don't render entity views that lie outside the viewport camera
 * Don't get updates for entities outside viewport?
 

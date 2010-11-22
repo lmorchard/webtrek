@@ -75,6 +75,7 @@ WebTrek.Game.World = Class.extend({
     update: function (time, delta) {
         this.time = time;
         this.hub.publish('beforeUpdate', [ time, delta ]);
+        this.handleCollisions(time, delta);
         for (var id in this.players) {
             this.players[id].update(time, delta);
         }
@@ -109,6 +110,38 @@ WebTrek.Game.World = Class.extend({
         var s_entities = snapshot.entities;
         for (var i=0,s; s=s_entities[i]; i++) {
             this.addEntity(WebTrek.Game.Entity.deserialize(s));
+        }
+    },
+
+    /** Search the world for collisions, handle them */
+    handleCollisions: function (time, delta) {
+
+        var entities = this.entities;
+
+        for (var id1 in entities) {
+            
+            var en_a = entities[id1],
+                a = en_a.getBounds();
+
+            for (var id2 in entities) {
+                if (id1 == id2) { continue; }
+            
+                var en_b = entities[id2],
+                    b = en_b.getBounds();
+
+                var x0 = Math.max(a.x, b.x);
+                var x1 = Math.min(a.x + a.w, b.x + b.w);
+
+                if (x0 <= x1) {
+                    var y0 = Math.max(a.y, b.y);
+                    var y1 = Math.min(a.y + a.h, b.y + b.h);
+
+                    if (y0 <= y1) {
+                        en_a.handleCollisionWith(time, delta, en_b);
+                        en_b.handleCollisionWith(time, delta, en_a);
+                    }
+                }
+            }
         }
     },
 

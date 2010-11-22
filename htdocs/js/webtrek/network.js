@@ -62,6 +62,16 @@ WebTrek.Network.QueuedMessageSocket = Class.extend({
         this.hub.publish('disconnect');
     },
     
+    acceptMessages: function () {
+        var out = this.msgs_in;
+        this.msgs_in = [];
+        return out;
+    },
+    
+    send: function (msg) {
+        this.msgs_out.push(msg);
+    },
+    
     handleMessage: function (data) {
         var msgs = JSON.parse(data),
         // var msgs = BISON.decode(data),
@@ -73,16 +83,6 @@ WebTrek.Network.QueuedMessageSocket = Class.extend({
         st.last = (new Date()).getTime();
 
         this.msgs_in.push.apply(this.msgs_in, msgs);
-    },
-    
-    acceptMessages: function () {
-        var out = this.msgs_in;
-        this.msgs_in = [];
-        return out;
-    },
-    
-    send: function (msg) {
-        this.msgs_out.push(msg);
     },
     
     flush: function () {

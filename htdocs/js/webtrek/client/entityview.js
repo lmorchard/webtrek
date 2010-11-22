@@ -39,14 +39,20 @@ WebTrek.Client.EntityView.EntityViewBase = Class.extend({
 /**
  * Avatar view class
  */
+        var full_circle = Math.PI * 2;
 WebTrek.Client.EntityView.AvatarView = WebTrek.Client.EntityView.EntityViewBase.extend({
     draw: function (ctx, time, delta, remainder) {
         var w = this.entity.options.size[0],
             h = this.entity.options.size[1];
 
         ctx.save();
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        if (this.entity.in_collision) {
+            ctx.fillStyle = 'rgba(255,64,64,0.4)';
+            ctx.strokeStyle = 'rgba(255,64,64,0.9)';
+        } else {
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        }
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(w/2, 0);
@@ -54,6 +60,7 @@ WebTrek.Client.EntityView.AvatarView = WebTrek.Client.EntityView.EntityViewBase.
         ctx.lineTo(w/2, h-(h/4));
         ctx.lineTo(0, h);
         ctx.lineTo(w/2, 0);
+        ctx.closePath();
         ctx.stroke();
         ctx.fill();
         ctx.restore();

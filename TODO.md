@@ -2,12 +2,13 @@
 
 ## Soon
 
+* Collision detection!!!
+* Switch to using require.js?
 * Rate-adaptive update stream like wpilot
     * See wpilot/wpilots.js :: post_update and connection.update_rate
     * Per-entity update frame modulo, see Nodegame-Shooter
         * Players = 1-2, under non-deterministic control
         * Bullets = 10, every 10 frames since ballistic
-* Collision detection!!!
 * Radar panel in HUD
 * Retroactive time adjustment for events to smooth things out
     * Stutter turning issue

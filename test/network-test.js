@@ -20,6 +20,7 @@ require('class');
 require('match');
 require('webtrek');
 require('webtrek/utils');
+require('webtrek/math');
 require('webtrek/client');
 require('webtrek/network');
 require('webtrek/game');
@@ -36,7 +37,9 @@ module.exports = nodeunit.testCase({
     "Initial player join conversation": function (test) {
         var $this = this;
 
-        var listener = new Mock_Listener();
+        var client_id, msg;
+
+        var listener = new Mock_Socket({ tag: 'LISTEN' });
         var server = new webtrek.Server({ listener: listener });
 
         for (var i=1; i<=5; i++) {
@@ -49,16 +52,14 @@ module.exports = nodeunit.testCase({
             );
         }
 
-        server.loop.start(0, 1000);
+        var script = new ClientScript({ 
+            test: test, 
+            server: server,
+            listener: listener 
+        });
 
-        var client_id, msg;
-
-        var script = new ClientScript({ test: test, listener: listener });
-        script.start();
-
-        script.send(OPS.HELLO);
-
-        msg = script.expectMsg(OPS.HELLO);
+        script.start().send(OPS.HELLO);
+        msg = script.expect(OPS.HELLO);
         test.ok(typeof(msg[2].client_id) != 'undefined',
             'welcome packet should come with a client ID');
 
@@ -66,15 +67,15 @@ module.exports = nodeunit.testCase({
 
         // Say something stupid...
         script.send('MAKE-ME-A-SANDWICH');
-        msg = script.expectMsg(OPS.WHAT);
+        msg = script.expect(OPS.WHAT);
 
         // A PING should work and get a PONG in response.
         script.send(OPS.PING);
-        msg = script.expectMsg(OPS.PONG);
+        msg = script.expect(OPS.PONG);
 
         // Down to business: ask for a snapshot
         script.send(OPS.WANT_SNAPSHOT);
-        msg = script.expectMsg(OPS.SNAPSHOT);
+        msg = script.expect(OPS.SNAPSHOT);
 
         var snapshot = msg[2];
         test.ok(typeof(snapshot.tick) != 'undefined');
@@ -92,29 +93,27 @@ module.exports = nodeunit.testCase({
             );
         });
 
-        script.send(OPS.WANT_PLAYER_JOIN);
+        script.send(OPS.WANT_PLAYER_JOIN).flush().tick();
 
-        msg = script.expectMsg(OPS.ENTITY_NEW);
-        var avatar_id = msg[2].id;
+        msg = script.expect(OPS.ENTITY_NEW);
+        var avatar_id = msg[2][1].id;
 
-        msg = script.expectMsg(OPS.PLAYER_NEW);
+        msg = script.expect(OPS.PLAYER_NEW);
         test.equal(msg[2].avatar_id, avatar_id);
         var player_id = msg[2].id;
         
-        msg = script.expectMsg(OPS.PLAYER_YOU);
+        msg = script.expect(OPS.PLAYER_YOU);
         test.equal(msg[2], player_id);
 
         return test.done();
-
     },
 
     "Basic client to server connection": function (test) {
-        return test.done();
         var $this = this;
 
         var max_tick = 400;
 
-        var s_listener = new Mock_Listener({ 
+        var s_listener = new Mock_Socket({ 
             tag: 'S (listen)'
         });
         var server = new webtrek.Server({ 
@@ -154,8 +153,6 @@ module.exports = nodeunit.testCase({
         client.loop.start(0, max_tick);
 
         client.connect();
-
-
     },
 
 });
@@ -198,7 +195,8 @@ var Mock_Socket = Class.extend({
 
     send: function (msg) {
         if (this.connection) {
-            util.log(this.options.tag + ': ' + msg);
+            if (true) util.debug(this.options.tag + ': ' + 
+                util.inspect(JSON.parse(msg), false, 8));
             this.connection.fire('message', msg); 
         }
     },
@@ -234,48 +232,67 @@ var Mock_Socket = Class.extend({
 
 });
 
-var Mock_Listener = Mock_Socket.extend({ });
-
 var ClientScript = Class.extend({
 
     init: function (options) {
         this.options = _.extend({
             steps: [],
             test: null,
+            server: null,
             listener: null,
-            timeout: 100
+            timeout: 100,
+            tick_start: 100,
+            tick_delta: 17
         }, options);
 
+        this.c_tick = 0;
         this.messages = [];
         this.timeout_timer = null;
         this.failed = false;
-        this.steps = this.options.steps;
+        this.server = this.options.server;
     },
 
     start: function () {
         var $this = this;
-        this.socket = new Mock_Socket({
-            onmessage: function (msg) {
-                var data = JSON.parse(msg);
-                $this.messages.push(data);
-            } 
-        });
-        this.options.listener.connectClient(this.socket);
+        var raw_socket = new Mock_Socket({ tag: 'C' });
+        this.socket = new WebTrek.Network.QueuedMessageSocket(raw_socket);
+
+        this.server.loop.reset(this.options.tick_start);
+        this.options.listener.connectClient(raw_socket);
+        this.tick();
+
+        return this;
     },
 
     recv: function () {
+        var new_msgs = this.socket.acceptMessages();
+        this.messages.push.apply(this.messages, new_msgs);
         return this.messages.shift();
     },
 
-    sendRaw: function (data) {
-        this.socket.send(JSON.stringify(data));
-    },
-
     send: function (op, params) {
-        return this.sendRaw([op, (new Date().getTime()), params]);
+        this.socket.send([op, this.getTick(), params]);
+        return this;
     },
 
-    expectMsg: function (op_type) {
+    flush: function () {
+        this.socket.flush();
+        return this;
+    },
+
+    getTick: function () {
+        return this.options.tick_start + 
+            ( (this.c_tick) * this.options.tick_delta );
+    },
+
+    tick: function () {
+        this.c_tick++;
+        this.server.loop.tickOnce(this.getTick());
+    },
+
+    expect: function (op_type) {
+        this.flush().tick();
+
         var test = this.options.test;
         var msg = this.recv();
         test.ok(msg, 

@@ -33,6 +33,38 @@ module.exports = nodeunit.testCase({
             test.done();
         });
         loop.start(0, 1000);
+    },
+
+    "Loop should allow for direct drive from a non-timer": function (test) {
+        var loop = new WebTrek.Game.Loop({
+            interval_delay: 10,
+            tick_duration: 10
+        });
+        
+        var cnt = 0,
+            tm_start = new Date().getTime(),
+            tm_total = 0;
+
+        loop.hub.subscribe('tick', function (tick, duration) {
+            cnt++;
+            tm_total += duration;
+        });
+        
+        loop.reset(1000);
+        for (var i=1000; i<=2000; i++) {
+            loop.tickOnce(i);
+        }
+        
+        var tm_end = new Date().getTime();
+        
+        test.ok(tm_end-tm_start < 100,
+            "Real elapsed time should be far less than 1000ms");
+        test.equal(100, cnt,
+            "100 ticks should have occurred");
+        test.equal(1000, tm_total,
+            "1000ms should have elapsed in loop time");
+
+        test.done();
     }
 
 });

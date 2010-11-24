@@ -16,7 +16,7 @@ WebTrek.Network = (function () {
 
         init: function () {
             for (var i=0,name; name=this.OPS_NAMES[i]; i++) {
-                this.OPS[name] = i;
+                this.OPS[name] = name; // i;
             }
             return $this;
         },

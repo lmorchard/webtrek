@@ -162,8 +162,8 @@ module.exports = nodeunit.testCase({
                 {},
                 {
                     position: [ 400, 400 ],
-                    velocity: [ 12, 34 ],
-                    angle: [ 2 ],
+                    velocity: [ 10, 0 ],
+                    angle: [ 0 ],
                 }
             )
         });
@@ -193,7 +193,7 @@ module.exports = nodeunit.testCase({
             test.deepEqual(objs.pluck(2).pluck('position').value(), [
                 [123,456],[123,456],[123,456],[123,456],
                 [123,456],[123,456],[400,400],
-                [ 413.6394614023852, 406.24220254820716 ]
+                [400,375]
             ]);
 
             test.deepEqual(objs.pluck(3).pluck('fire').value(), [

@@ -2,6 +2,7 @@
 
 ## Soon
 
+* Remove all (new Date()).getTime(), rely on current loop time so tests can control all timing
 * Collision detection!!!
 * Switch to using require.js?
 * Rate-adaptive update stream like wpilot

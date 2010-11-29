@@ -7,6 +7,7 @@ WebTrek.Client = Class.extend(function() {
     var match = Match;
     var _a = match.incl;
     var vmath = WebTrek.Math;
+    var avg = WebTrek.Utils.avg;
     
     return {
 
@@ -17,12 +18,14 @@ WebTrek.Client = Class.extend(function() {
                 debug: true,
                 ping_period: 500,
                 max_pings: 10,
-                world_size: [ 1500, 1500 ]
+                world_size: [ 1500, 1500 ],
+                min_ticks_ahead: 100,
+                max_ticks_ahead: 300
             }, options);
 
             var $this = this;
 
-            this.last_ping_time = (new Date()).getTime();
+            this.last_ping_time = 0;
             this.pings = [];
 
             this.hub = new WebTrek.Utils.PubSub();
@@ -110,10 +113,10 @@ WebTrek.Client = Class.extend(function() {
             if (this.viewport) {
                 this.viewport.update(time, delta, remainder);
             }
-            var now = (new Date()).getTime();
+            var now = time;
             if (now - this.last_ping_time > this.options.ping_period) {
                 this.last_ping_time = now;
-                this.send(OPS.PING);
+                this.send(OPS.PING, this.loop.tick);
             }
             this.socket.flush();
         },
@@ -152,8 +155,7 @@ WebTrek.Client = Class.extend(function() {
         },
 
         send: function (op, params) {
-            var now = new Date().getTime();
-            return this.socket.send([op, now, params]);
+            return this.socket.send([op, this.loop.tick, params]);
         },
 
         updateEntity: function (tick, data) {
@@ -186,7 +188,7 @@ WebTrek.Client = Class.extend(function() {
         handleMessage: function (msg) {
 
             var $this = this,
-                now = new Date().getTime(),
+                now = this.loop.tick,
                 op = msg[0],
                 msg_time = msg[1],
                 args = msg[2];
@@ -201,16 +203,10 @@ WebTrek.Client = Class.extend(function() {
                     break;
                 
                 case OPS.PING:
-                    this.send(OPS.PONG, this.loop.tick); 
-                    break;
+                    this.send(OPS.PONG, this.loop.tick); break;
 
                 case OPS.PONG:
-                    var latency = now - this.last_ping_time;
-                    this.pings.push(latency);
-                    if (this.pings.length > this.options.max_pings) {
-                        this.pings.shift();
-                    }
-                    break;
+                    this.handlePong(args); break;
                 
                 case OPS.SNAPSHOT:
                     this.loop.tick = args.tick;
@@ -220,6 +216,10 @@ WebTrek.Client = Class.extend(function() {
                 case OPS.ENTITY_NEW:
                     var entity = WebTrek.Game.Entity.deserialize(args);
                     this.world.addEntity(entity);
+                    if (this.loop.tick > msg_time) {
+                        // Update the new entity into the client's predicted future
+                        entity.update(msg_time, (this.loop.tick - msg_time) );
+                    }
                     break;
 
                 case OPS.ENTITY_UPDATE:
@@ -259,6 +259,40 @@ WebTrek.Client = Class.extend(function() {
                     break;
 
             }
+        },
+
+        /** 
+         * Handle a pong response, adjust client loop clock to stay ahead of
+         * server. 
+         */
+        handlePong: function (remote_tick) {
+
+            var now = this.loop.tick,
+                latency = now - this.last_ping_time,
+                min_ticks_ahead = this.options.min_ticks_ahead,
+                max_ticks_ahead = this.options.max_ticks_ahead;
+
+            // Maintain window of ping latencies.
+            this.pings.push(latency);
+            if (this.pings.length > this.options.max_pings) {
+                this.pings.shift();
+            }
+
+            var avg_lag = avg(this.pings),
+                tick_delta = (this.loop.tick - remote_tick),
+                adjust = 0;
+
+            if (tick_delta < min_ticks_ahead) {
+                // Client is not far enough ahead of server clock, so catch up
+                var adjust = (avg(this.pings)/2) + (min_ticks_ahead-tick_delta);
+                this.loop.accum += adjust;
+            }
+            if (tick_delta > max_ticks_ahead) {
+                // Client is too far ahead of server, so hold up a bit
+                var adjust = (avg(this.pings)/2) + (tick_delta-max_ticks_ahead);
+                this.loop.accum -= adjust;
+            }
+
         },
 
         EOF:null

@@ -139,6 +139,7 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
 
     /** Send a periodic remote update with a server */
     sendRemoteUpdate: function (time, delta, server) {
+        if (!this.last_network_update) { this.last_network_update = time; }
         var network_age = time - this.last_network_update;
         if (network_age >= this.options.network_update_period) {
             this.last_network_update = time;
@@ -155,14 +156,8 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
     /** Apply a remote update structure to this entity for the given tick */
     applyRemoteUpdate: function (tick, update) {
 
-        var state_update = update[1];
-        // if (this.is_client) { delete state_update.angle; }
-
-        /*
-        this.state = _(this.state).extend(state_update);
-        this.action = _(this.action).extend(update[2]);
-        return;
-        */
+        var state_update = update[1],
+            action_update = update[2];
 
         this.updating = true;
 
@@ -174,48 +169,14 @@ WebTrek.Game.Entity.EntityBase = Class.extend({
         }
 
         if (!move || m_idx == this.moves.length-1) {
-            // TODO: Do some interpolation in correction
 
-            if (state_update.angle) {
-                if (Math.abs(this.state.angle - state_update.angle) > 2) {
-                    this.state.angle = state_update.angle;
-                } else {
-                    this.state.angle += 0.1 * (this.state.angle - state_update.angle);
-                }
-
-                delete state_update.angle;
-            }
-
-            if (state_update.position) {
-
-                var x_diff = Math.abs(this.state.position[0] - 
-                    state_update.position[0]);
-                var y_diff = Math.abs(this.state.position[1] - 
-                    state_update.position[1]);
-
-                var vmath = WebTrek.Math;
-                //if (x_diff > 2 || y_diff > 2) {
-                //    this.state.position = state_update.position;
-                //} else if (x_diff > 0.1 || y_diff > 0.1) {
-                    this.state.position = vmath.vector_add(
-                        this.state.position, 
-                        vmath.vector_div(
-                            vmath.vector_sub(
-                                state_update.position, this.state.position
-                            ), 10
-                        )
-                    );
-                //}
-
-                delete state_update.position;
-            }
-
+            // TODO: Do some interpolation smoothing in correction
             // Server update is newer than client, so just apply
             this.state = _(this.state).extend(state_update);
             this.action = _(this.action).extend(update[2]);
 
-
         } else {
+
             // Need to rewind/replay to accomodate server correction, so chop
             // off the set of moves that the client is ahead of the update.
             var replay = this.moves.splice(m_idx, ( this.moves.length - m_idx ));
@@ -354,12 +315,12 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
     init: function (options, state, action) {
         this._super(
             _.extend({
-                network_update_period: 20,
-                size: [ 25, 25 ],
+                network_update_period: 40,
+                size: [ 20, 25 ],
                 rotation_per_second: 2.5,
-                thrust_accel:  350,
-                reverse_accel: 350,
-                max_speed: 250,
+                thrust_accel:  325,
+                reverse_accel: 325,
+                max_speed: 225,
                 bounce: 0.8,
                 reload_delay: 250
             }, options),
@@ -431,12 +392,12 @@ WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
         this._super(
             _.extend({
                 network_update_period: 500,
-                size: [ 3, 3 ],
-                max_speed: 350,
+                size: [ 2.5, 2.5 ],
+                max_speed: 325,
                 acceleration: 0,
                 time_to_live: 5000,
                 bounce: 1,
-                max_bounces: 1
+                max_bounces: 2
             },options),
             _.extend({
                 bounce_count: 0
@@ -459,10 +420,10 @@ WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
         this.state.position = [ 
             Math.min(owner.world.options.width, Math.max(0, 
                 owner.state.position[0] + 
-                Math.cos(angle-Math.PI/2) * owner.options.size[0])),
+                Math.cos(angle-Math.PI/2) * owner.options.size[0] * 0.5)),
             Math.min(owner.world.options.height, Math.max(0, 
                 owner.state.position[1] + 
-                Math.sin(angle-Math.PI/2) * owner.options.size[0]))
+                Math.sin(angle-Math.PI/2) * owner.options.size[1] * 0.5))
         ];
 
         // Adopt the owner's velocity plus bullet's own speed along angle

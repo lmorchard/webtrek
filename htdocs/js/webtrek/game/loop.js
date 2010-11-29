@@ -12,7 +12,7 @@ WebTrek.Game.Loop = Class.extend({
             until: null,
             interval_delay: 10,
             tick_duration: 17,
-            max_delta: 3000
+            max_delta: 6000
         }, options);
 
         this.hub = new WebTrek.Utils.PubSub();

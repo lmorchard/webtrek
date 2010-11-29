@@ -2,7 +2,6 @@
 
 ## Soon
 
-* Remove all (new Date()).getTime(), rely on current loop time so tests can control all timing
 * Collision detection!!!
 * Switch to using require.js?
 * Rate-adaptive update stream like wpilot
@@ -10,6 +9,7 @@
     * Per-entity update frame modulo, see Nodegame-Shooter
         * Players = 1-2, under non-deterministic control
         * Bullets = 10, every 10 frames since ballistic
+* Remove all (new Date()).getTime(), rely on current loop time so tests can control all timing
 * Radar panel in HUD
 * Retroactive time adjustment for events to smooth things out
     * Stutter turning issue

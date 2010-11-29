@@ -195,7 +195,7 @@ var Mock_Socket = Class.extend({
 
     send: function (msg) {
         if (this.connection) {
-            if (true) util.debug(this.options.tag + ': ' + 
+            if (false) util.debug(this.options.tag + ': ' + 
                 util.inspect(JSON.parse(msg), false, 8));
             this.connection.fire('message', msg); 
         }

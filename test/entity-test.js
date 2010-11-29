@@ -193,7 +193,7 @@ module.exports = nodeunit.testCase({
             test.deepEqual(objs.pluck(2).pluck('position').value(), [
                 [123,456],[123,456],[123,456],[123,456],
                 [123,456],[123,456],[400,400],
-                [400,375]
+                [400,387.5]
             ]);
 
             test.deepEqual(objs.pluck(3).pluck('fire').value(), [

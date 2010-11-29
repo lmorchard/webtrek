@@ -2,17 +2,18 @@
 
 ## Soon
 
+* Particle engine for client-only visual effects
+* Client-only ghost bullets to predict server-spawned bullets not yet updated round-trip
 * Collision detection!!!
+* An actual game
+    * Shields, hull, score, etc
+* Radar panel in HUD
+* Static entities
+    * Walls, etc
 * Switch to using require.js?
 * Rate-adaptive update stream like wpilot
     * See wpilot/wpilots.js :: post_update and connection.update_rate
-    * Per-entity update frame modulo, see Nodegame-Shooter
-        * Players = 1-2, under non-deterministic control
-        * Bullets = 10, every 10 frames since ballistic
-* Remove all (new Date()).getTime(), rely on current loop time so tests can control all timing
-* Radar panel in HUD
-* Retroactive time adjustment for events to smooth things out
-    * Stutter turning issue
+* Reduce message sizes
 * Don't render entity views that lie outside the viewport camera
 * Don't get updates for entities outside viewport?
 

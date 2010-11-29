@@ -285,12 +285,12 @@ WebTrek.Client = Class.extend(function() {
             if (tick_delta < min_ticks_ahead) {
                 // Client is not far enough ahead of server clock, so catch up
                 var adjust = (avg(this.pings)/2) + (min_ticks_ahead-tick_delta);
-                this.loop.accum += adjust;
+                this.loop.accum += Math.max( 100, adjust );
             }
             if (tick_delta > max_ticks_ahead) {
                 // Client is too far ahead of server, so hold up a bit
                 var adjust = (avg(this.pings)/2) + (tick_delta-max_ticks_ahead);
-                this.loop.accum -= adjust;
+                this.loop.accum -= Math.max( 100, adjust );
             }
 
         },

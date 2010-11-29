@@ -317,10 +317,10 @@ WebTrek.Game.Entity.Avatar = WebTrek.Game.Entity.MotionBase.extend({
             _.extend({
                 network_update_period: 40,
                 size: [ 20, 25 ],
-                rotation_per_second: 2.5,
-                thrust_accel:  325,
-                reverse_accel: 325,
-                max_speed: 225,
+                rotation_per_second: 2.75,
+                thrust_accel:  375,
+                reverse_accel: 375,
+                max_speed: 275,
                 bounce: 0.8,
                 reload_delay: 250
             }, options),
@@ -392,8 +392,8 @@ WebTrek.Game.Entity.Bullet = WebTrek.Game.Entity.MotionBase.extend({
         this._super(
             _.extend({
                 network_update_period: 500,
-                size: [ 2.5, 2.5 ],
-                max_speed: 325,
+                size: [ 3, 3 ],
+                max_speed: 375,
                 acceleration: 0,
                 time_to_live: 5000,
                 bounce: 1,
